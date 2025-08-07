@@ -6,19 +6,12 @@ import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import StorageService from '../services/storageService';
 
-const initialPrograms = [
-  { program: 'Filter clean program', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-  { program: 'Duct Heater Activation', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-  { program: 'Bearing replacement', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-  { program: 'Unit replacement', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-  { program: 'Air Balancing program', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-  { program: 'Duct cleaning program', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' },
-];
+const initialPrograms: Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }> = [];
 
 export default function DatabaseScreen() {
   const [isImporting, setIsImporting] = useState(false);
   const [showRCM, setShowRCM] = useState(false);
-  const [programs, setPrograms] = useState(initialPrograms);
+  const [programs, setPrograms] = useState<Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }>>([]);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [errors, setErrors] = useState<{ [key: number]: boolean }>({});
   const [loadingRCM, setLoadingRCM] = useState(false);
@@ -35,12 +28,28 @@ export default function DatabaseScreen() {
         const docRef = doc(db, 'rcmPrograms', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setPrograms(docSnap.data().programs || initialPrograms);
+          const existingPrograms = docSnap.data().programs || [];
+          if (existingPrograms.length === 0) {
+            // If no programs exist, create an empty row in edit mode
+            setPrograms([{ program: '', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' }]);
+            // Use setTimeout to ensure programs state is updated before setting edit mode
+            setTimeout(() => setEditIndex(0), 100);
+          } else {
+            // If programs exist, load them normally
+            setPrograms(existingPrograms);
+            setEditIndex(null);
+          }
         } else {
-          setPrograms(initialPrograms);
+          // For new users, create an empty row in edit mode
+          setPrograms([{ program: '', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' }]);
+          // Use setTimeout to ensure programs state is updated before setting edit mode
+          setTimeout(() => setEditIndex(0), 100);
         }
       } catch (e) {
-        setPrograms(initialPrograms);
+        // In case of error, create an empty row in edit mode
+        setPrograms([{ program: '', noOfHouses: '', completed: '', remaining: '', percentCompleted: '' }]);
+        // Use setTimeout to ensure programs state is updated before setting edit mode
+        setTimeout(() => setEditIndex(0), 100);
       } finally {
         setLoadingRCM(false);
       }
@@ -97,8 +106,15 @@ export default function DatabaseScreen() {
       }
 
       // Convert file to blob for upload
+      console.log('Converting file to blob...');
       const response = await fetch(file.uri);
       const blob = await response.blob();
+      
+      console.log('File details:', {
+        name: file.name,
+        size: file.size,
+        uri: file.uri
+      });
 
       const uploadResult = await StorageService.uploadDocument(
         blob,
@@ -123,7 +139,11 @@ export default function DatabaseScreen() {
           ]
         );
       } else {
-        Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload file.');
+        console.error('Upload error details:', uploadResult.error);
+        Alert.alert(
+          'Upload Failed', 
+          `Firebase Storage: ${uploadResult.error || 'An unknown error occurred, please check the error payload for server response. (storage/unknown)'}`
+        );
       }
 
     } catch (error) {
@@ -256,53 +276,53 @@ export default function DatabaseScreen() {
                 <Text style={[styles.tableHeaderCell, styles.tableBorder]}>% Completed</Text>
                 <Text style={styles.tableHeaderCell}>Edit</Text>
               </View>
-              {programs.map((row, idx) => (
-                <View style={styles.tableRow} key={idx}>
-                  {editIndex === idx ? (
-                    <TextInput
-                      style={[styles.tableInput, styles.tableBorder]}
-                      value={row.program}
-                      onChangeText={(val) => handleChange(idx, 'program', val)}
-                      placeholder="Program Name"
-                    />
-                  ) : (
-                    <Text style={[styles.tableCell, styles.tableBorder]}>{row.program}</Text>
-                  )}
-                  {editIndex === idx ? (
-                    <TextInput
-                      style={[styles.tableInput, styles.tableBorder, errors[idx] && { borderColor: 'red' }]}
-                      value={row.noOfHouses}
-                      onChangeText={(val) => handleChange(idx, 'noOfHouses', val)}
-                      keyboardType="numeric"
-                      placeholder="Required"
-                    />
-                  ) : (
-                    <Text style={[styles.tableCell, styles.tableBorder]}>{row.noOfHouses}</Text>
-                  )}
-                  {editIndex === idx ? (
-                    <TextInput
-                      style={[styles.tableInput, styles.tableBorder]}
-                      value={row.completed}
-                      onChangeText={(val) => handleChange(idx, 'completed', val)}
-                      keyboardType="numeric"
-                      placeholder="Completed"
-                    />
-                  ) : (
-                    <Text style={[styles.tableCell, styles.tableBorder]}>{row.completed}</Text>
-                  )}
-                  <Text style={[styles.tableCell, styles.tableBorder]}>{row.remaining}</Text>
-                  <Text style={[styles.tableCell, styles.tableBorder]}>{row.percentCompleted}</Text>
-                  {editIndex === idx ? (
-                    <Pressable style={styles.saveButton} onPress={() => handleSave(idx)}>
-                      <Text style={styles.saveButtonText}>Save</Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable style={styles.editButton} onPress={() => handleEdit(idx)}>
-                      <Text style={styles.editButtonText}>Edit</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
+               {programs.map((row, idx) => (
+                   <View style={styles.tableRow} key={idx}>
+                     {editIndex === idx ? (
+                       <TextInput
+                         style={[styles.tableInput, styles.tableBorder]}
+                         value={row.program}
+                         onChangeText={(val) => handleChange(idx, 'program', val)}
+                         placeholder="Program Name"
+                       />
+                     ) : (
+                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.program}</Text>
+                     )}
+                     {editIndex === idx ? (
+                       <TextInput
+                         style={[styles.tableInput, styles.tableBorder, errors[idx] && { borderColor: 'red' }]}
+                         value={row.noOfHouses}
+                         onChangeText={(val) => handleChange(idx, 'noOfHouses', val)}
+                         keyboardType="numeric"
+                         placeholder="Required"
+                       />
+                     ) : (
+                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.noOfHouses}</Text>
+                     )}
+                     {editIndex === idx ? (
+                       <TextInput
+                         style={[styles.tableInput, styles.tableBorder]}
+                         value={row.completed}
+                         onChangeText={(val) => handleChange(idx, 'completed', val)}
+                         keyboardType="numeric"
+                         placeholder="Completed"
+                       />
+                     ) : (
+                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.completed}</Text>
+                     )}
+                     <Text style={[styles.tableCell, styles.tableBorder]}>{row.remaining}</Text>
+                     <Text style={[styles.tableCell, styles.tableBorder]}>{row.percentCompleted}</Text>
+                     {editIndex === idx ? (
+                       <Pressable style={styles.saveButton} onPress={() => handleSave(idx)}>
+                         <Text style={styles.saveButtonText}>Save</Text>
+                       </Pressable>
+                     ) : (
+                       <Pressable style={styles.editButton} onPress={() => handleEdit(idx)}>
+                         <Text style={styles.editButtonText}>Edit</Text>
+                       </Pressable>
+                     )}
+                   </View>
+                 ))}
               <Pressable style={styles.addProgramButton} onPress={handleAddProgram}>
                 <Text style={styles.addProgramButtonText}>+ Add Program</Text>
               </Pressable>
@@ -511,4 +531,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+
 });

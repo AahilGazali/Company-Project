@@ -15,20 +15,49 @@ export class StorageService {
     fileName?: string
   ): Promise<UploadResult> {
     try {
+      console.log('Starting upload to Firebase Storage...');
+      console.log('File type:', file.type);
+      console.log('File size:', file.size);
+      console.log('Path:', path);
+      console.log('FileName:', fileName);
+      
       const fullPath = fileName ? `${path}/${fileName}` : path;
+      console.log('Full path:', fullPath);
+      
       const storageRef = ref(storage, fullPath);
+      console.log('Storage reference created');
       
       const snapshot = await uploadBytes(storageRef, file);
+      console.log('Upload completed, getting download URL...');
+      
       const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log('Download URL obtained:', downloadURL);
       
       return {
         success: true,
         url: downloadURL
       };
     } catch (error: any) {
+      console.error('Firebase Storage upload error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = error.message;
+      
+      // Provide more specific error messages
+      if (error.code === 'storage/unauthorized') {
+        errorMessage = 'Upload failed: Unauthorized. Please check your Firebase Storage rules.';
+      } else if (error.code === 'storage/quota-exceeded') {
+        errorMessage = 'Upload failed: Storage quota exceeded.';
+      } else if (error.code === 'storage/invalid-format') {
+        errorMessage = 'Upload failed: Invalid file format.';
+      } else if (error.code === 'storage/retry-limit-exceeded') {
+        errorMessage = 'Upload failed: Network error, please try again.';
+      }
+      
       return {
         success: false,
-        error: error.message
+        error: errorMessage
       };
     }
   }

@@ -17,12 +17,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
+import ChatButton from '../components/ChatButton';
+import ChatInterface from '../components/ChatInterface';
 
 const { width, height } = Dimensions.get('window');
 
 export default function QueryScreen() {
   const [queryText, setQueryText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const submitQuery = async () => {
     if (!queryText.trim()) {
@@ -50,6 +53,10 @@ export default function QueryScreen() {
     }
   };
 
+  const handleChatToggle = () => {
+    setIsChatOpen(!isChatOpen);
+  };
+
   return (
     <View style={styles.container}>
       {/* Gradient Background */}
@@ -62,14 +69,7 @@ export default function QueryScreen() {
 
       {/* Background Blur Effect */}
       <BlurView intensity={20} style={styles.blurContainer}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardContainer} 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContainer} 
-            showsVerticalScrollIndicator={false}
-          >
+        <View style={styles.mainContainer}>
             {/* Query Card */}
             <View style={styles.queryCard}>
               {/* Header */}
@@ -133,9 +133,22 @@ export default function QueryScreen() {
             <View style={styles.decorativeCircle1} />
             <View style={styles.decorativeCircle2} />
             <View style={styles.decorativeCircle3} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </BlurView>
+          </View>
+        </BlurView>
+
+      {/* Chatbot Components */}
+      <View style={styles.chatbotContainer}>
+        <ChatButton 
+          onPress={handleChatToggle}
+          isOpen={isChatOpen}
+          hasUnreadMessages={false}
+        />
+      </View>
+      
+      <ChatInterface 
+        isVisible={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
     </View>
   );
 }
@@ -154,23 +167,20 @@ const styles = StyleSheet.create({
   blurContainer: {
     flex: 1,
   },
-  keyboardContainer: {
+  mainContainer: {
     flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-    paddingBottom: 100, // Add extra bottom padding for tab bar
   },
   queryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
-    padding: 32,
+    padding: 24,
     width: width * 0.9,
     maxWidth: 500,
+    maxHeight: height * 0.7,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -182,54 +192,54 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(76, 175, 80, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   icon: {
-    fontSize: 40,
+    fontSize: 30,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   form: {
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#2E7D32',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#F8F9FA',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
-    minHeight: 120,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   characterCount: {
@@ -239,7 +249,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   button: {
-    marginBottom: 24,
+    marginBottom: 16,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#2E7D32',
@@ -255,33 +265,39 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
   },
   tipsContainer: {
     backgroundColor: 'rgba(76, 175, 80, 0.05)',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
   },
   tipsTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#2E7D32',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tipText: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#666',
-    marginBottom: 4,
-    lineHeight: 18,
+    marginBottom: 3,
+    lineHeight: 16,
+  },
+  chatbotContainer: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    zIndex: 1000,
   },
   // Decorative elements
   decorativeCircle1: {

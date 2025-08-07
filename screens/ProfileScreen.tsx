@@ -123,14 +123,7 @@ export default function ProfileScreen({ navigation }: any) {
 
       {/* Background Blur Effect */}
       <BlurView intensity={20} style={styles.blurContainer}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardContainer} 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContainer} 
-            showsVerticalScrollIndicator={false}
-          >
+        <View style={styles.mainContainer}>
             {/* Profile Card */}
             <View style={styles.profileCard}>
               {/* Header */}
@@ -213,8 +206,7 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={styles.decorativeCircle1} />
             <View style={styles.decorativeCircle2} />
             <View style={styles.decorativeCircle3} />
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
       </BlurView>
     </View>
   );
@@ -256,21 +248,20 @@ const styles = StyleSheet.create({
   blurContainer: {
     flex: 1,
   },
-  keyboardContainer: {
+  mainContainer: {
     flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
     paddingHorizontal: 20,
-    paddingVertical: 40,
-    paddingBottom: 100,
+    paddingVertical: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
-    padding: 32,
+    padding: 24,
     width: width * 0.9,
     maxWidth: 500,
+    maxHeight: height * 0.8,
     alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -283,15 +274,15 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   avatarContainer: {
     marginBottom: 16,
   },
   avatarGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#2E7D32',
@@ -304,68 +295,68 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFF',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   profileInfo: {
     width: '100%',
   },
   infoSection: {
-    marginBottom: 32,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
   },
   infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(46, 125, 50, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
   },
   actionsSection: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   actionButton: {
     marginBottom: 16,
@@ -397,8 +388,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#F44336',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
   logoutButtonContent: {
     flexDirection: 'row',
@@ -408,7 +399,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#F44336',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
     marginLeft: 8,
   },
   // Decorative elements

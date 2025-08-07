@@ -1,5 +1,3 @@
-"use client"
-
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { View, StyleSheet, Platform, Animated } from "react-native"
@@ -27,31 +25,55 @@ const TabBarIcon = ({
   size: number
   focused: boolean
 }) => {
-  const scaleValue = React.useRef(new Animated.Value(focused ? 1.1 : 1)).current
+  const scaleValue = React.useRef(new Animated.Value(focused ? 1.2 : 1)).current
+  const translateY = React.useRef(new Animated.Value(focused ? -8 : 0)).current
 
   React.useEffect(() => {
-    Animated.spring(scaleValue, {
-      toValue: focused ? 1.1 : 1,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 8,
-    }).start()
+    Animated.parallel([
+      Animated.spring(scaleValue, {
+        toValue: focused ? 1.2 : 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }),
+      Animated.spring(translateY, {
+        toValue: focused ? -8 : 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      })
+    ]).start()
   }, [focused])
 
   return (
     <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
       {focused && (
-        <LinearGradient
-          colors={["rgba(46, 125, 50, 0.15)", "rgba(76, 175, 80, 0.08)"]}
-          style={styles.activeIconBackground}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
+        <Animated.View 
+          style={[
+            styles.activeCircleBackground,
+            { transform: [{ translateY: translateY }] }
+          ]}
+        >
+          <LinearGradient
+            colors={["#2E7D32", "#1B5E20", "#0D4A0D"]}
+            style={styles.activeIconBackground}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        </Animated.View>
       )}
-      <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-        <Ionicons name={name as any} size={size} color={color} />
+      <Animated.View style={{ 
+        transform: [
+          { scale: scaleValue },
+          { translateY: translateY }
+        ] 
+      }}>
+        <Ionicons 
+          name={name as any} 
+          size={size} 
+          color={focused ? "#FFFFFF" : color} 
+        />
       </Animated.View>
-      {focused && <View style={styles.activeIndicatorDot} />}
     </View>
   )
 }
@@ -62,39 +84,41 @@ export default function HomeTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Database"
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size, focused }) => {
-          let iconName = ""
-          if (route.name === "Database") iconName = focused ? "server" : "server-outline"
-          else if (route.name === "Reports") iconName = focused ? "stats-chart" : "stats-chart-outline"
-          else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
-          else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
+      screenOptions={({ route }: { route: any }) => ({
+                 tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
+           let iconName = ""
+           if (route.name === "Database") iconName = focused ? "server" : "server-outline"
+           else if (route.name === "Programs") iconName = focused ? "list" : "list-outline"
+           else if (route.name === "Reports") iconName = focused ? "stats-chart" : "stats-chart-outline"
+           else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
+           else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
-          return <TabBarIcon name={iconName} color={color} size={focused ? 26 : 22} focused={focused} />
-        },
-        tabBarActiveTintColor: "#2E7D32",
-        tabBarInactiveTintColor: "#9E9E9E",
+                       return <TabBarIcon name={iconName} color={color} size={focused ? 22 : 18} focused={focused} />
+         },
+                tabBarActiveTintColor: "#2E7D32",
+        tabBarInactiveTintColor: "#6B7280",
         tabBarStyle: [
           styles.tabBar,
           {
-            paddingBottom: insets.bottom > 0 ? insets.bottom : Platform.OS === "ios" ? 20 : 10,
-            height: (Platform.OS === "ios" ? 85 : 70) + (insets.bottom > 0 ? insets.bottom : 0),
+            paddingBottom: insets.bottom > 0 ? insets.bottom : Platform.OS === "ios" ? 25 : 15,
+            height: (Platform.OS === "ios" ? 95 : 80) + (insets.bottom > 0 ? insets.bottom : 0),
           }
         ],
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
+        tabBarLabelPosition: "below-icon",
         headerShown: false,
         tabBarShowLabel: true,
         tabBarHideOnKeyboard: true,
         tabBarBackground: () => (
           <View style={styles.tabBarBackground}>
             <LinearGradient
-              colors={["#FFFFFF", "#F8F9FA", "#F5F5F5"]}
+              colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
               style={styles.tabBarGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
             />
-            <BlurView intensity={15} style={styles.tabBarBlur} />
+            <BlurView intensity={20} style={styles.tabBarBlur} />
             <View style={styles.tabBarBorder} />
           </View>
         ),
@@ -143,8 +167,8 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingTop: 12,
-    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingHorizontal: 8,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -180,27 +204,29 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: "rgba(46, 125, 50, 0.1)",
+    backgroundColor: "rgba(46, 125, 50, 0.08)",
   },
   tabBarItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   tabBarLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "600",
-    marginTop: 6,
-    letterSpacing: 0.3,
+    marginTop: 4,
+    letterSpacing: 0.2,
+    color: "#2E7D32",
+    textAlign: "center",
   },
   iconWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderRadius: 16,
     position: "relative",
-    minWidth: 60,
-    minHeight: 40,
+    minWidth: 50,
+    minHeight: 35,
   },
   activeIconWrapper: {
     shadowColor: "#2E7D32",
@@ -212,20 +238,36 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  activeCircleBackground: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 30,
+    shadowColor: "#2E7D32",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   activeIconBackground: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 16,
+    borderRadius: 30,
   },
   activeIndicatorDot: {
     position: "absolute",
-    bottom: -10,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    bottom: -12,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: "#2E7D32",
     shadowColor: "#2E7D32",
     shadowOffset: {
