@@ -54,6 +54,7 @@ export const isLargeDevice = (): boolean => {
 // Responsive spacing
 export const spacing = {
   tiny: moderateScale(4),
+  xSmall: moderateScale(6),
   small: moderateScale(8),
   medium: moderateScale(12),
   large: moderateScale(16),
@@ -66,6 +67,7 @@ export const spacing = {
 // Responsive font sizes
 export const fontSize = {
   tiny: scaleFont(10),
+  xSmall: scaleFont(11),
   small: scaleFont(12),
   medium: scaleFont(14),
   large: scaleFont(16),

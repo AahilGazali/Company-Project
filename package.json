@@ -9,12 +9,14 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@azure/msal-node": "^3.7.0",
     "@google/generative-ai": "^0.24.1",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-navigation/bottom-tabs": "^7.4.4",
     "@react-navigation/native": "^7.1.16",
     "@react-navigation/native-stack": "^7.3.23",
     "@types/xlsx": "^0.0.35",
+    "axios": "^1.11.0",
     "dotenv": "^17.2.1",
     "expo": "~53.0.20",
     "expo-blur": "~14.1.5",
@@ -22,6 +24,8 @@
     "expo-linear-gradient": "~14.1.5",
     "expo-status-bar": "~2.2.3",
     "firebase": "^12.0.0",
+    "powerbi-client": "^2.23.1",
+    "powerbi-client-react": "^2.0.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-chart-kit": "^6.12.0",

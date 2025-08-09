@@ -7,6 +7,8 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import StorageService from '../services/storageService';
 import ImportedFilesService, { ImportedFile } from '../services/importedFilesService';
 import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
+import ChartDataService from '../services/chartDataService';
+import DashboardStorageService from '../services/dashboardStorageService';
 import ResponsiveTable from '../components/ResponsiveTable';
 import { 
   spacing, 
@@ -174,12 +176,41 @@ export default function DatabaseScreen() {
           const savedFileId = await ImportedFilesService.saveImportedFile(fileRecord);
           console.log('File record saved with ID:', savedFileId);
           
-          // Analyze Excel file for AI chat context
+          // Analyze Excel file for AI chat context and generate dashboard
           try {
             console.log('🔍 Starting Excel analysis for AI context...');
             const analysis = await ExcelAnalysisService.analyzeExcelFile(uploadResult.url!, file.name);
             setCurrentDataAnalysis(analysis);
             console.log('✅ Excel analysis completed:', analysis.overallSummary);
+            
+            // Generate dashboard charts from Excel data
+            try {
+              console.log('📊 Generating dashboard charts...');
+              
+              console.log('🔄 Starting dashboard data generation...');
+              const dashboardData = await ChartDataService.generateDashboardData(
+                savedFileId,
+                file.name,
+                uploadResult.url!,
+                analysis
+              );
+              
+              console.log('🔄 Saving dashboard to Firestore...');
+              // Save dashboard to Firestore
+              await DashboardStorageService.saveDashboard(
+                savedFileId,
+                file.name,
+                user.uid,
+                dashboardData
+              );
+              
+              console.log('✅ Dashboard generated and saved successfully');
+            } catch (dashboardError: any) {
+              console.error('❌ Error generating dashboard:', dashboardError);
+              console.error('❌ Dashboard error details:', dashboardError?.message || 'Unknown error');
+              console.error('❌ Dashboard error stack:', dashboardError?.stack || 'No stack trace');
+              // Continue without dashboard - file upload was successful
+            }
           } catch (analysisError) {
             console.error('❌ Error analyzing Excel file:', analysisError);
             // Continue without analysis - chat will work without data context
@@ -195,7 +226,7 @@ export default function DatabaseScreen() {
         
         Alert.alert(
           'File Uploaded Successfully',
-          `File "${file.name}" has been uploaded and analyzed!\n\nYou can now ask questions about your data in the Query screen.`,
+          `File "${file.name}" has been uploaded and analyzed!\n\n✅ Dashboard with charts generated\n✅ AI chat context ready\n\nView your dashboard in the Reports screen or ask questions in the Query screen.`,
           [
             { text: 'OK', style: 'default' },
             { 
