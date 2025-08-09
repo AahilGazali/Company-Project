@@ -11,14 +11,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth } from "../firebaseConfig"
-
-const { width, height } = Dimensions.get("window")
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getContainerWidth, 
+  getCardPadding, 
+  getShadow,
+  getIconSize 
+} from "../utils/responsive"
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("")
@@ -143,103 +149,88 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.huge,
   },
   loginCard: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 24,
-    padding: 32,
-    width: width * 0.9,
-    maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: borderRadius.xxxLarge,
+    padding: getCardPadding(),
+    width: getContainerWidth(0.9),
+    ...getShadow(10),
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: spacing.xxxLarge,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: getIconSize(80),
+    height: getIconSize(80),
+    borderRadius: getIconSize(40),
     backgroundColor: "rgba(76, 175, 80, 0.1)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing.large,
   },
   icon: {
-    fontSize: 40,
+    fontSize: getIconSize(40),
   },
   title: {
-    fontSize: 28,
+    fontSize: fontSize.huge,
     fontWeight: "bold",
     color: "#2E7D32",
-    marginBottom: 8,
+    marginBottom: spacing.small,
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     color: "#666",
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: spacing.xLarge + 6,
   },
   form: {
     width: "100%",
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: spacing.large,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     fontWeight: "600",
     color: "#2E7D32",
-    marginBottom: 8,
+    marginBottom: spacing.small,
   },
   input: {
     backgroundColor: "#F8F9FA",
-    padding: 16,
-    borderRadius: 12,
+    padding: spacing.large,
+    borderRadius: borderRadius.large,
     borderWidth: 1,
     borderColor: "#E0E0E0",
-    fontSize: 16,
+    fontSize: fontSize.large,
     color: "#333",
   },
   button: {
-    marginTop: 8,
-    marginBottom: 24,
-    borderRadius: 12,
+    marginTop: spacing.small,
+    marginBottom: spacing.xxLarge,
+    borderRadius: borderRadius.large,
     overflow: "hidden",
-    shadowColor: "#2E7D32",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
   buttonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: spacing.large,
+    paddingHorizontal: spacing.xxxLarge,
     alignItems: "center",
   },
   buttonText: {
     color: "#FFF",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: fontSize.large,
   },
   link: {
     color: "#666",
     textAlign: "center",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fontSize.medium,
+    lineHeight: spacing.large + 4,
   },
   linkBold: {
     fontWeight: "bold",

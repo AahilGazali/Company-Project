@@ -19,8 +19,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-
-const { width, height } = Dimensions.get('window');
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getContainerWidth, 
+  getCardPadding, 
+  getShadow,
+  getIconSize,
+  getSafeAreaPadding,
+  isSmallDevice,
+  isTablet,
+  screenDimensions
+} from '../utils/responsive';
 
 interface UserData {
   name?: string;
@@ -123,7 +134,14 @@ export default function ProfileScreen({ navigation }: any) {
 
       {/* Background Blur Effect */}
       <BlurView intensity={20} style={styles.blurContainer}>
-        <View style={styles.mainContainer}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardContainer} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContainer} 
+            showsVerticalScrollIndicator={false}
+          >
             {/* Profile Card */}
             <View style={styles.profileCard}>
               {/* Header */}
@@ -149,7 +167,7 @@ export default function ProfileScreen({ navigation }: any) {
                   
                   <View style={styles.infoItem}>
                     <View style={styles.infoIcon}>
-                      <Ionicons name="person" size={20} color="#2E7D32" />
+                      <Ionicons name="person" size={getIconSize(20)} color="#2E7D32" />
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Full Name</Text>
@@ -159,7 +177,7 @@ export default function ProfileScreen({ navigation }: any) {
 
                   <View style={styles.infoItem}>
                     <View style={styles.infoIcon}>
-                      <Ionicons name="mail" size={20} color="#2E7D32" />
+                      <Ionicons name="mail" size={getIconSize(20)} color="#2E7D32" />
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Email</Text>
@@ -169,7 +187,7 @@ export default function ProfileScreen({ navigation }: any) {
 
                   <View style={styles.infoItem}>
                     <View style={styles.infoIcon}>
-                      <Ionicons name="id-card" size={20} color="#2E7D32" />
+                      <Ionicons name="id-card" size={getIconSize(20)} color="#2E7D32" />
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Employee ID</Text>
@@ -179,7 +197,7 @@ export default function ProfileScreen({ navigation }: any) {
 
                   <View style={styles.infoItem}>
                     <View style={styles.infoIcon}>
-                      <Ionicons name="location" size={20} color="#2E7D32" />
+                      <Ionicons name="location" size={getIconSize(20)} color="#2E7D32" />
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Project Name</Text>
@@ -194,7 +212,7 @@ export default function ProfileScreen({ navigation }: any) {
                   
                   <Pressable style={styles.logoutButton} onPress={handleLogout}>
                     <View style={styles.logoutButtonContent}>
-                      <Ionicons name="log-out" size={20} color="#F44336" />
+                      <Ionicons name="log-out" size={getIconSize(20)} color="#F44336" />
                       <Text style={styles.logoutButtonText}>Logout</Text>
                     </View>
                   </Pressable>
@@ -206,7 +224,8 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={styles.decorativeCircle1} />
             <View style={styles.decorativeCircle2} />
             <View style={styles.decorativeCircle3} />
-          </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </BlurView>
     </View>
   );
@@ -221,22 +240,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F0F4F3',
+    paddingHorizontal: spacing.large,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: spacing.large,
+    fontSize: fontSize.large,
     color: '#666',
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F0F4F3',
+    paddingHorizontal: spacing.large,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     color: '#666',
     textAlign: 'center',
+    lineHeight: fontSize.large + 4,
   },
   gradient: {
     position: 'absolute',
@@ -248,148 +271,136 @@ const styles = StyleSheet.create({
   blurContainer: {
     flex: 1,
   },
-  mainContainer: {
+  keyboardContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.large,
+    paddingTop: getSafeAreaPadding().top + spacing.large,
+    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: 24,
-    width: width * 0.9,
-    maxWidth: 500,
-    maxHeight: height * 0.8,
+    borderRadius: borderRadius.xxxLarge,
+    padding: getCardPadding(),
+    width: getContainerWidth(0.9),
+    maxHeight: screenDimensions.height * (isSmallDevice() ? 0.85 : 0.8),
     alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    ...getShadow(10),
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isSmallDevice() ? spacing.large : spacing.xLarge,
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.large,
   },
   avatarGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: getIconSize(60),
+    height: getIconSize(60),
+    borderRadius: getIconSize(30),
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2E7D32',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
   avatarText: {
-    fontSize: 24,
+    fontSize: getIconSize(24),
     fontWeight: 'bold',
     color: '#FFF',
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 6,
+    marginBottom: spacing.small,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: fontSize.medium + 4,
   },
   profileInfo: {
     width: '100%',
   },
   infoSection: {
-    marginBottom: 20,
+    marginBottom: spacing.large,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 12,
+    marginBottom: spacing.medium,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    marginBottom: spacing.medium,
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
     backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    borderRadius: borderRadius.large,
+    minHeight: isSmallDevice() ? 50 : 55,
   },
   infoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: getIconSize(32),
+    height: getIconSize(32),
+    borderRadius: getIconSize(16),
     backgroundColor: 'rgba(46, 125, 50, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.medium,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
-    fontSize: 11,
+    fontSize: fontSize.small,
     color: '#666',
-    marginBottom: 2,
+    marginBottom: spacing.tiny,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     fontWeight: '600',
     color: '#333',
+    lineHeight: fontSize.medium + 2,
   },
   actionsSection: {
-    marginBottom: 8,
+    marginBottom: spacing.small,
   },
   actionButton: {
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: spacing.large,
+    borderRadius: borderRadius.large,
     overflow: 'hidden',
-    shadowColor: '#2E7D32',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
   actionButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: spacing.large,
+    paddingHorizontal: spacing.xxxLarge,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: isSmallDevice() ? 44 : 48,
   },
   actionButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: 8,
+    fontSize: fontSize.large,
+    marginLeft: spacing.small,
   },
   logoutButton: {
     borderWidth: 2,
     borderColor: '#F44336',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    borderRadius: borderRadius.large,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.large,
+    minHeight: isSmallDevice() ? 44 : 48,
+    justifyContent: 'center',
   },
   logoutButtonContent: {
     flexDirection: 'row',
@@ -399,35 +410,35 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#F44336',
     fontWeight: 'bold',
-    fontSize: 14,
-    marginLeft: 8,
+    fontSize: fontSize.medium,
+    marginLeft: spacing.small,
   },
-  // Decorative elements
+  // Decorative elements - responsive positioning
   decorativeCircle1: {
     position: 'absolute',
-    top: 100,
-    left: -50,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    top: screenDimensions.height * 0.15,
+    left: -spacing.huge - spacing.medium,
+    width: getIconSize(100),
+    height: getIconSize(100),
+    borderRadius: getIconSize(50),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   decorativeCircle2: {
     position: 'absolute',
-    bottom: 150,
-    right: -30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: screenDimensions.height * 0.2,
+    right: -spacing.xLarge - spacing.medium,
+    width: getIconSize(60),
+    height: getIconSize(60),
+    borderRadius: getIconSize(30),
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   decorativeCircle3: {
     position: 'absolute',
-    top: 200,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: screenDimensions.height * 0.3,
+    right: spacing.large,
+    width: getIconSize(40),
+    height: getIconSize(40),
+    borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
 }); 

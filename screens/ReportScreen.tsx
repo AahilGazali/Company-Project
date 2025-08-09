@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { spacing, fontSize, isTablet } from '../utils/responsive';
 
 export default function ReportsScreen() {
   return (
@@ -16,18 +17,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F4F3',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 100, // Add extra bottom padding for tab bar
+    padding: spacing.large,
+    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 10,
+    marginBottom: spacing.medium,
+    textAlign: 'center',
   },
   text: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     textAlign: 'center',
     color: '#555',
+    lineHeight: fontSize.large + 8,
   },
 });

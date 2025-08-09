@@ -1,8 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getShadow,
+  isSmallDevice,
+  isTablet,
+  screenDimensions
+} from '../utils/responsive';
 
 interface ProgramRow {
   program: string;
@@ -11,8 +20,6 @@ interface ProgramRow {
   remaining?: string;
   percentCompleted?: string;
 }
-
-const screenWidth = Dimensions.get('window').width;
 
 const ProgramScreen = () => {
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
@@ -67,7 +74,7 @@ const ProgramScreen = () => {
           <Text style={styles.tableHeaderCell}>Program</Text>
         </View>
         {filledPrograms.map((row, idx) => (
-          <Pressable key={idx} onPress={() => handleRowPress(row)}>
+          <Pressable key={`program-${idx}-${row.program}`} onPress={() => handleRowPress(row)}>
             <View style={styles.tableRow}>
               <Text style={styles.tableCell}>{row.program}</Text>
             </View>
@@ -145,126 +152,131 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F0F4F3',
-    padding: 20,
-    paddingBottom: 100,
+    padding: spacing.large,
+    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 20,
+    marginBottom: spacing.large,
     textAlign: 'center',
   },
   tableContainer: {
     backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: borderRadius.large,
+    padding: spacing.large,
+    marginTop: spacing.medium,
+    ...getShadow(4),
   },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    marginBottom: 8,
+    marginBottom: spacing.small,
   },
   tableHeaderCell: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     fontWeight: 'bold',
     color: '#333',
     flex: 1,
     textAlign: 'center',
-    paddingVertical: 6,
+    paddingVertical: spacing.small,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-    paddingVertical: 12,
+    paddingVertical: spacing.medium,
+    minHeight: isSmallDevice() ? 44 : 50,
+    alignItems: 'center',
   },
   tableCell: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     color: '#2E7D32',
     flex: 1,
     textAlign: 'center',
     fontWeight: 'bold',
-    paddingVertical: 4,
+    paddingVertical: spacing.tiny,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.large,
   },
   modalContent: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
+    borderRadius: borderRadius.large,
+    padding: spacing.xxxLarge,
+    width: '100%',
+    maxWidth: isTablet() ? 500 : screenDimensions.width * 0.9,
     alignItems: 'center',
+    ...getShadow(8),
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: fontSize.xLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 12,
+    marginBottom: spacing.medium,
+    textAlign: 'center',
   },
   chartContainer: {
     width: '100%',
-    marginVertical: 20,
+    marginVertical: spacing.large,
   },
   chartTitle: {
-    fontSize: 18,
+    fontSize: fontSize.xLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.large,
   },
   barContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.large,
     width: '100%',
   },
   barLabel: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: spacing.tiny,
   },
   barBackground: {
-    height: 20,
+    height: isSmallDevice() ? 18 : 22,
     backgroundColor: '#E0E0E0',
-    borderRadius: 10,
+    borderRadius: borderRadius.medium,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
     backgroundColor: '#4CAF50',
-    borderRadius: 10,
+    borderRadius: borderRadius.medium,
   },
   barValue: {
-    fontSize: 12,
+    fontSize: fontSize.small,
     color: '#666',
-    marginTop: 2,
+    marginTop: spacing.tiny,
     textAlign: 'right',
   },
   closeButton: {
-    marginTop: 10,
-    borderRadius: 8,
+    marginTop: spacing.medium,
+    borderRadius: borderRadius.medium,
     overflow: 'hidden',
+    ...getShadow(4),
   },
   closeButtonGradient: {
-    paddingVertical: 10,
-    paddingHorizontal: 30,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.xxxLarge,
     alignItems: 'center',
+    minHeight: isSmallDevice() ? 44 : 48,
+    justifyContent: 'center',
   },
   closeButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: fontSize.medium,
   },
 });
 

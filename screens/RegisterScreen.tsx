@@ -18,8 +18,15 @@ import { BlurView } from "expo-blur"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db } from "../firebaseConfig"
-
-const { width, height } = Dimensions.get("window")
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getContainerWidth, 
+  getCardPadding, 
+  getShadow,
+  getIconSize 
+} from "../utils/responsive"
 
 export default function RegisterScreen({ navigation }: any) {
   const [formData, setFormData] = useState({
@@ -287,23 +294,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.huge,
   },
   registerCard: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 24,
-    padding: 32,
-    width: width * 0.9,
-    maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: borderRadius.xxxLarge,
+    padding: getCardPadding(),
+    width: getContainerWidth(0.9),
+    ...getShadow(10),
   },
   header: {
     alignItems: "center",

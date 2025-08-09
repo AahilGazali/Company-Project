@@ -4,6 +4,15 @@ import { View, StyleSheet, Platform, Animated } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getShadow,
+  getSafeAreaPadding,
+  getIconSize,
+  isTablet
+} from "../utils/responsive"
 import DatabaseScreen from "./DatabaseScreen"
 import ReportsScreen from "./ReportScreen"
 import QueryScreen from "./QueryScreen"
@@ -80,6 +89,7 @@ const TabBarIcon = ({
 
 export default function HomeTabs() {
   const insets = useSafeAreaInsets()
+  const safeArea = getSafeAreaPadding()
 
   return (
     <Tab.Navigator
@@ -93,15 +103,20 @@ export default function HomeTabs() {
            else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
            else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
-                       return <TabBarIcon name={iconName} color={color} size={focused ? 22 : 18} focused={focused} />
+                       return <TabBarIcon 
+                         name={iconName} 
+                         color={color} 
+                         size={getIconSize(focused ? 22 : 18)} 
+                         focused={focused} 
+                       />
          },
                 tabBarActiveTintColor: "#2E7D32",
         tabBarInactiveTintColor: "#6B7280",
         tabBarStyle: [
           styles.tabBar,
           {
-            paddingBottom: insets.bottom > 0 ? insets.bottom : Platform.OS === "ios" ? 25 : 15,
-            height: (Platform.OS === "ios" ? 95 : 80) + (insets.bottom > 0 ? insets.bottom : 0),
+            paddingBottom: Math.max(insets.bottom, safeArea.bottom),
+            height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80) + Math.max(insets.bottom, 0),
           }
         ],
         tabBarLabelStyle: styles.tabBarLabel,
@@ -167,16 +182,9 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: "transparent",
     borderTopWidth: 0,
-    paddingTop: 16,
-    paddingHorizontal: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 12,
+    paddingTop: spacing.large,
+    paddingHorizontal: spacing.small,
+    ...getShadow(12),
   },
   tabBarBackground: {
     position: "absolute",
@@ -184,8 +192,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: borderRadius.xxxLarge,
+    borderTopRightRadius: borderRadius.xxxLarge,
     overflow: "hidden",
   },
   tabBarGradient: {
@@ -207,13 +215,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(46, 125, 50, 0.08)",
   },
   tabBarItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.tiny,
   },
   tabBarLabel: {
-    fontSize: 10,
+    fontSize: fontSize.tiny,
     fontWeight: "600",
-    marginTop: 4,
+    marginTop: spacing.tiny,
     letterSpacing: 0.2,
     color: "#2E7D32",
     textAlign: "center",

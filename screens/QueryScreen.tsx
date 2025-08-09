@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,24 +8,108 @@ import {
   Pressable, 
   Alert, 
   StyleSheet, 
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import ChatButton from '../components/ChatButton';
 import ChatInterface from '../components/ChatInterface';
-
-const { width, height } = Dimensions.get('window');
+import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
+import { ImportedFile, ImportedFilesService } from '../services/importedFilesService';
+import GeminiService from '../services/geminiService';
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getContainerWidth, 
+  getCardPadding, 
+  getShadow,
+  getIconSize,
+  getSafeAreaPadding,
+  isSmallDevice,
+  isTablet,
+  screenDimensions
+} from '../utils/responsive';
 
 export default function QueryScreen() {
   const [queryText, setQueryText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [currentDataAnalysis, setCurrentDataAnalysis] = useState<ExcelAnalysis | null>(null);
+  const [latestFile, setLatestFile] = useState<ImportedFile | null>(null);
+  const [loadingLatestFile, setLoadingLatestFile] = useState(true);
+  const [retryingAnalysis, setRetryingAnalysis] = useState(false);
+
+  // Load the latest imported Excel file for data context
+  useEffect(() => {
+    const loadLatestExcelFile = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setLoadingLatestFile(false);
+          return;
+        }
+
+        console.log('🔍 Loading latest Excel file for QueryScreen...');
+        const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+        
+        if (files.length > 0) {
+          // Get the most recent file
+          const latestFile = files[0]; // Files are ordered by uploadedAt desc
+          setLatestFile(latestFile);
+          
+          // Analyze the file for AI context
+          try {
+            console.log('📊 Analyzing latest file for chat context:', latestFile.originalName);
+            const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName);
+            setCurrentDataAnalysis(analysis);
+            
+            // Set the context in GeminiService
+            GeminiService.setDataContext(analysis);
+            
+            console.log('✅ Excel analysis loaded for QueryScreen');
+          } catch (analysisError) {
+            console.error('❌ Error analyzing file for QueryScreen:', analysisError);
+            console.log('ℹ️ Continuing without Excel data analysis. Chat will work in general mode.');
+            // Store the file info even if analysis fails so user knows a file exists
+            setLatestFile(latestFile);
+            // Continue without analysis - chat will work in general mode
+          }
+        } else {
+          console.log('ℹ️ No imported files found for data context');
+        }
+      } catch (error) {
+        console.error('❌ Error loading latest file:', error);
+      } finally {
+        setLoadingLatestFile(false);
+      }
+    };
+
+    loadLatestExcelFile();
+  }, []);
+
+  // Retry analysis function
+  const retryAnalysis = async () => {
+    if (!latestFile || retryingAnalysis) return;
+    
+    setRetryingAnalysis(true);
+    try {
+      console.log('🔄 Retrying Excel analysis for:', latestFile.originalName);
+      const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName);
+      setCurrentDataAnalysis(analysis);
+      GeminiService.setDataContext(analysis);
+      console.log('✅ Retry successful - Excel analysis loaded');
+    } catch (error) {
+      console.error('❌ Retry failed:', error);
+      Alert.alert('Analysis Failed', 'Could not analyze the Excel file. Please try uploading the file again in the Database tab.');
+    } finally {
+      setRetryingAnalysis(false);
+    }
+  };
 
   const submitQuery = async () => {
     if (!queryText.trim()) {
@@ -69,7 +153,15 @@ export default function QueryScreen() {
 
       {/* Background Blur Effect */}
       <BlurView intensity={20} style={styles.blurContainer}>
-        <View style={styles.mainContainer}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardContainer} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContainer} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Query Card */}
             <View style={styles.queryCard}>
               {/* Header */}
@@ -83,21 +175,80 @@ export default function QueryScreen() {
                 </Text>
               </View>
 
+              {/* Data Context Status */}
+              {!loadingLatestFile && (
+                <View style={styles.dataStatus}>
+                  {currentDataAnalysis ? (
+                    <View style={styles.dataConnected}>
+                      <Text style={styles.dataStatusIcon}>📊</Text>
+                      <View style={styles.dataStatusText}>
+                        <Text style={styles.dataStatusTitle}>Excel Data Connected</Text>
+                        <Text style={styles.dataStatusSubtitle}>
+                          {currentDataAnalysis.fileName} • {currentDataAnalysis.keyFields.length} fields
+                        </Text>
+                      </View>
+                    </View>
+                  ) : latestFile ? (
+                    <View style={styles.dataDisconnected}>
+                      <Text style={styles.dataStatusIcon}>⚠️</Text>
+                      <View style={styles.dataStatusText}>
+                        <Text style={styles.dataStatusTitle}>File Found - Analysis Failed</Text>
+                        <Text style={styles.dataStatusSubtitle}>
+                          {latestFile.originalName} - Chat works in general mode
+                        </Text>
+                      </View>
+                      <Pressable 
+                        style={styles.retryButton} 
+                        onPress={retryAnalysis}
+                        disabled={retryingAnalysis}
+                      >
+                        <Text style={styles.retryButtonText}>
+                          {retryingAnalysis ? '🔄' : '🔄 Retry'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={styles.dataDisconnected}>
+                      <Text style={styles.dataStatusIcon}>📄</Text>
+                      <View style={styles.dataStatusText}>
+                        <Text style={styles.dataStatusTitle}>No Data Connected</Text>
+                        <Text style={styles.dataStatusSubtitle}>
+                          Upload Excel files in Database tab for data-specific questions
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+
               {/* Query Form */}
               <View style={styles.form}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>Your Query</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      queryText.length > 500 && { borderColor: '#F44336', borderWidth: 2 }
+                    ]}
                     value={queryText}
-                    onChangeText={setQueryText}
+                    onChangeText={(text) => {
+                      // Limit to 500 characters
+                      if (text.length <= 500) {
+                        setQueryText(text);
+                      }
+                    }}
                     placeholder="Type your question or concern here..."
                     placeholderTextColor="#A5A5A5"
                     multiline
-                    numberOfLines={6}
+                    numberOfLines={isSmallDevice() ? 4 : isTablet() ? 8 : 6}
                     textAlignVertical="top"
+                    maxLength={500}
                   />
-                  <Text style={styles.characterCount}>
+                  <Text style={[
+                    styles.characterCount,
+                    queryText.length > 450 && { color: '#FF9800' },
+                    queryText.length > 500 && { color: '#F44336' }
+                  ]}>
                     {queryText.length}/500 characters
                   </Text>
                 </View>
@@ -121,10 +272,21 @@ export default function QueryScreen() {
 
                 {/* Tips Section */}
                 <View style={styles.tipsContainer}>
-                  <Text style={styles.tipsTitle}>💡 Tips for better queries:</Text>
-                  <Text style={styles.tipText}>• Be specific and clear</Text>
-                  <Text style={styles.tipText}>• Include relevant details</Text>
-                  <Text style={styles.tipText}>• We'll respond within 24 hours</Text>
+                  <Text style={styles.tipsTitle}>
+                    {currentDataAnalysis ? '🤖 AI will analyze your Excel data automatically' : '💡 Tips for better queries:'}
+                  </Text>
+                  {currentDataAnalysis ? (
+                    <Text style={styles.tipText}>
+                      Ask any question about your data - the AI will automatically detect keywords, 
+                      field names, and context from your Excel file to provide intelligent answers.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={styles.tipText}>• Be specific and clear</Text>
+                      <Text style={styles.tipText}>• Include relevant details</Text>
+                      <Text style={styles.tipText}>• We'll respond within 24 hours</Text>
+                    </>
+                  )}
                 </View>
               </View>
             </View>
@@ -133,8 +295,9 @@ export default function QueryScreen() {
             <View style={styles.decorativeCircle1} />
             <View style={styles.decorativeCircle2} />
             <View style={styles.decorativeCircle3} />
-          </View>
-        </BlurView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </BlurView>
 
       {/* Chatbot Components */}
       <View style={styles.chatbotContainer}>
@@ -148,6 +311,7 @@ export default function QueryScreen() {
       <ChatInterface 
         isVisible={isChatOpen}
         onClose={() => setIsChatOpen(false)}
+        dataAnalysis={currentDataAnalysis}
       />
     </View>
   );
@@ -167,164 +331,213 @@ const styles = StyleSheet.create({
   blurContainer: {
     flex: 1,
   },
-  mainContainer: {
+  keyboardContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.huge,
+    paddingTop: getSafeAreaPadding().top + spacing.large,
+    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   queryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: 24,
-    width: width * 0.9,
-    maxWidth: 500,
-    maxHeight: height * 0.7,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: borderRadius.xxxLarge,
+    padding: getCardPadding(),
+    width: getContainerWidth(0.9),
+    maxHeight: screenDimensions.height * (isSmallDevice() ? 0.8 : 0.7),
+    ...getShadow(10),
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isSmallDevice() ? spacing.large : spacing.xLarge,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: getIconSize(60),
+    height: getIconSize(60),
+    borderRadius: getIconSize(30),
     backgroundColor: 'rgba(76, 175, 80, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.medium,
   },
   icon: {
-    fontSize: 30,
+    fontSize: getIconSize(30),
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 6,
+    marginBottom: spacing.small,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: fontSize.medium + 4,
+    paddingHorizontal: isSmallDevice() ? 0 : spacing.medium,
   },
   form: {
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.large,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     fontWeight: '600',
     color: '#2E7D32',
-    marginBottom: 8,
+    marginBottom: spacing.small,
   },
   input: {
     backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 12,
+    padding: spacing.medium,
+    borderRadius: borderRadius.large,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    fontSize: 14,
+    fontSize: fontSize.medium,
     color: '#333',
-    minHeight: 80,
+    minHeight: isSmallDevice() ? 100 : isTablet() ? 120 : 110,
     textAlignVertical: 'top',
+    maxHeight: 200,
   },
   characterCount: {
-    fontSize: 12,
+    fontSize: fontSize.small,
     color: '#999',
     textAlign: 'right',
-    marginTop: 8,
+    marginTop: spacing.small,
   },
   button: {
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: spacing.large,
+    borderRadius: borderRadius.large,
     overflow: 'hidden',
-    shadowColor: '#2E7D32',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonGradient: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.xxxLarge,
     alignItems: 'center',
+    minHeight: isSmallDevice() ? 44 : 48,
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: fontSize.large,
   },
   tipsContainer: {
     backgroundColor: 'rgba(76, 175, 80, 0.05)',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: borderRadius.large,
+    padding: spacing.medium,
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
+    marginTop: isSmallDevice() ? 0 : spacing.small,
   },
   tipsTitle: {
-    fontSize: 12,
+    fontSize: fontSize.small,
     fontWeight: '600',
     color: '#2E7D32',
-    marginBottom: 6,
+    marginBottom: spacing.small,
   },
   tipText: {
-    fontSize: 11,
+    fontSize: fontSize.small,
     color: '#666',
-    marginBottom: 3,
-    lineHeight: 16,
+    marginBottom: spacing.tiny,
+    lineHeight: fontSize.small + 4,
   },
   chatbotContainer: {
     position: 'absolute',
-    bottom: 100,
-    right: 20,
+    bottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    right: spacing.large,
     zIndex: 1000,
   },
-  // Decorative elements
+  // Decorative elements - responsive positioning
   decorativeCircle1: {
     position: 'absolute',
-    top: 100,
-    left: -50,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    top: screenDimensions.height * 0.15,
+    left: -spacing.huge - spacing.medium,
+    width: getIconSize(100),
+    height: getIconSize(100),
+    borderRadius: getIconSize(50),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   decorativeCircle2: {
     position: 'absolute',
-    bottom: 150,
-    right: -30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: screenDimensions.height * 0.2,
+    right: -spacing.xLarge - spacing.medium,
+    width: getIconSize(60),
+    height: getIconSize(60),
+    borderRadius: getIconSize(30),
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   decorativeCircle3: {
     position: 'absolute',
-    top: 200,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: screenDimensions.height * 0.25,
+    right: spacing.large,
+    width: getIconSize(40),
+    height: getIconSize(40),
+    borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  dataStatus: {
+    marginTop: spacing.medium,
+    marginBottom: spacing.small,
+  },
+  dataConnected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: borderRadius.medium,
+    padding: spacing.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  dataDisconnected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(158, 158, 158, 0.1)',
+    borderRadius: borderRadius.medium,
+    padding: spacing.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: '#9E9E9E',
+  },
+  dataStatusIcon: {
+    fontSize: fontSize.xLarge,
+    marginRight: spacing.medium,
+  },
+  dataStatusText: {
+    flex: 1,
+  },
+  dataStatusTitle: {
+    fontSize: fontSize.medium,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginBottom: 2,
+  },
+  dataStatusSubtitle: {
+    fontSize: fontSize.small,
+    color: '#666',
+    lineHeight: fontSize.small + 4,
+  },
+  retryButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: borderRadius.small,
+    paddingHorizontal: spacing.small,
+    paddingVertical: spacing.tiny,
+    marginLeft: spacing.small,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: fontSize.small,
+    fontWeight: '600',
   },
 });

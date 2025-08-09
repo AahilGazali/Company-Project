@@ -85,7 +85,7 @@ export class StorageService {
     const fileName = documentName || `document_${timestamp}`;
     const path = `users/${userId}/documents/${fileName}`;
     
-    return this.uploadFile(documentFile, path, fileName);
+    return this.uploadFile(documentFile, path);
   }
 
   // Upload RCM program data files

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChatMessage } from '../services/geminiService';
+import { spacing, fontSize, borderRadius, getShadow } from '../utils/responsive';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -35,7 +36,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: spacing.tiny,
     maxWidth: '80%',
   },
   userContainer: {
@@ -45,17 +46,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   bubble: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: borderRadius.xLarge,
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.medium,
+    ...getShadow(3),
   },
   userBubble: {
     backgroundColor: 'transparent',
@@ -66,23 +60,23 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   userGradient: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: borderRadius.xLarge,
+    paddingHorizontal: spacing.large,
+    paddingVertical: spacing.medium,
   },
   userText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: fontSize.large,
     fontWeight: '500',
   },
   botText: {
     color: '#333',
-    fontSize: 16,
+    fontSize: fontSize.large,
     fontWeight: '400',
   },
   timestamp: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: fontSize.small,
+    marginTop: spacing.tiny,
     opacity: 0.6,
   },
   userTimestamp: {

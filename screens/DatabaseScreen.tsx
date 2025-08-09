@@ -5,6 +5,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import StorageService from '../services/storageService';
+import ImportedFilesService, { ImportedFile } from '../services/importedFilesService';
+import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
+import ResponsiveTable from '../components/ResponsiveTable';
+import ImportedFilesList from '../components/ImportedFilesList';
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getShadow,
+  isSmallDevice,
+  isTablet
+} from '../utils/responsive';
 
 const initialPrograms: Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }> = [];
 
@@ -16,6 +28,10 @@ export default function DatabaseScreen() {
   const [errors, setErrors] = useState<{ [key: number]: boolean }>({});
   const [loadingRCM, setLoadingRCM] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [importedFiles, setImportedFiles] = useState<ImportedFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
+  const [showImportedFiles, setShowImportedFiles] = useState(false);
+  const [currentDataAnalysis, setCurrentDataAnalysis] = useState<ExcelAnalysis | null>(null);
 
   // Load RCM data from Firestore when RCM is shown
   useEffect(() => {
@@ -56,6 +72,26 @@ export default function DatabaseScreen() {
     };
     fetchRCM();
   }, [showRCM]);
+
+  // Load imported files when component mounts
+  useEffect(() => {
+    loadImportedFiles();
+  }, []);
+
+  const loadImportedFiles = async () => {
+    try {
+      setLoadingFiles(true);
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+      setImportedFiles(files);
+    } catch (error) {
+      console.error('Error loading imported files:', error);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
 
   // Save RCM data to Firestore
   const saveRCMToFirestore = async (updatedPrograms: typeof programs) => {
@@ -124,16 +160,51 @@ export default function DatabaseScreen() {
 
       if (uploadResult.success) {
         setUploadedFiles(prev => [...prev, uploadResult.url!]);
+        
+        // Save file record to database
+        try {
+          const fileRecord = {
+            fileName: file.name,
+            originalName: file.name,
+            fileUrl: uploadResult.url!,
+            fileSize: file.size || 0,
+            fileType: file.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            userId: user.uid,
+            status: 'uploaded' as const,
+            description: 'Excel file imported via DatabaseScreen'
+          };
+          
+          const savedFileId = await ImportedFilesService.saveImportedFile(fileRecord);
+          console.log('File record saved with ID:', savedFileId);
+          
+          // Analyze Excel file for AI chat context
+          try {
+            console.log('🔍 Starting Excel analysis for AI context...');
+            const analysis = await ExcelAnalysisService.analyzeExcelFile(uploadResult.url!, file.name);
+            setCurrentDataAnalysis(analysis);
+            console.log('✅ Excel analysis completed:', analysis.overallSummary);
+          } catch (analysisError) {
+            console.error('❌ Error analyzing Excel file:', analysisError);
+            // Continue without analysis - chat will work without data context
+          }
+          
+          // Refresh the imported files list
+          await loadImportedFiles();
+          
+        } catch (saveError) {
+          console.error('Error saving file record:', saveError);
+          // Continue with the success flow even if saving record fails
+        }
+        
         Alert.alert(
           'File Uploaded Successfully',
-          `File "${file.name}" has been uploaded to Firebase Storage.\n\nDownload URL: ${uploadResult.url}`,
+          `File "${file.name}" has been uploaded and analyzed!\n\nYou can now ask questions about your data in the Query screen.`,
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: 'OK', style: 'default' },
             { 
-              text: 'Process Data', 
+              text: 'View Files', 
               onPress: () => {
-                // Here you can add logic to process the Excel data
-                Alert.alert('Success', 'Excel data processed successfully!');
+                setShowImportedFiles(true);
               }
             }
           ]
@@ -206,7 +277,33 @@ export default function DatabaseScreen() {
     setEditIndex(programs.length);
   };
 
+  const handleFileDeleted = (fileId: string) => {
+    setImportedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  // Analyze an existing imported file for chat context
+  const analyzeImportedFile = async (file: ImportedFile) => {
+    try {
+      console.log('🔍 Analyzing imported file for chat:', file.originalName);
+      const analysis = await ExcelAnalysisService.analyzeExcelFile(file.fileUrl, file.originalName);
+      setCurrentDataAnalysis(analysis);
+      console.log('✅ Analysis completed for imported file');
+      
+      Alert.alert(
+        'Data Loaded for Analysis',
+        `File "${file.originalName}" is now ready for AI questions in the Query screen!`,
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error analyzing imported file:', error);
+      Alert.alert('Analysis Error', 'Could not analyze this file for AI chat.');
+    }
+  };
+
   return (
+    <>
     <ScrollView style={styles.container}>
       {/* Import Section */}
       <View style={styles.importSection}>
@@ -241,13 +338,42 @@ export default function DatabaseScreen() {
           <View style={styles.uploadedFilesContainer}>
             <Text style={styles.uploadedFilesTitle}>Uploaded Files:</Text>
             {uploadedFiles.map((url, index) => (
-              <Text key={index} style={styles.uploadedFileUrl}>
+              <Text key={`file-${index}-${url.substring(url.length - 10)}`} style={styles.uploadedFileUrl}>
                 File {index + 1}: {url.substring(0, 50)}...
               </Text>
             ))}
           </View>
         )}
       </View>
+
+      {/* Imported Files Section */}
+      <Pressable 
+        style={styles.importedFilesButton} 
+        onPress={() => setShowImportedFiles((prev) => !prev)}
+      >
+        <LinearGradient
+          colors={['#FF9800', '#F57C00']}
+          style={styles.buttonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.buttonText}>
+            📂 My Imported Files ({importedFiles.length})
+          </Text>
+        </LinearGradient>
+      </Pressable>
+
+      {/* Imported Files List */}
+      {showImportedFiles && (
+        <View style={styles.importedFilesSection}>
+          <ImportedFilesList
+            files={importedFiles}
+            onRefresh={loadImportedFiles}
+            refreshing={loadingFiles}
+            onFileDeleted={handleFileDeleted}
+          />
+        </View>
+      )}
 
       {/* RCM Button */}
       <Pressable style={styles.rcmButton} onPress={() => setShowRCM((prev) => !prev)}>
@@ -264,73 +390,30 @@ export default function DatabaseScreen() {
       {/* RCM Table */}
       {showRCM && (
         loadingRCM ? (
-          <Text style={{ textAlign: 'center', marginTop: 20 }}>Loading...</Text>
+          <Text style={{ textAlign: 'center', marginTop: spacing.large, fontSize: fontSize.large, color: '#666' }}>Loading...</Text>
         ) : (
-          <ScrollView horizontal style={styles.tableScroll}>
-            <View style={styles.tableContainer}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderCell, styles.tableBorder]}>Program</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableBorder]}>No. of Houses<Text style={{color:'red'}}>*</Text></Text>
-                <Text style={[styles.tableHeaderCell, styles.tableBorder]}>Completed</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableBorder]}>Remaining</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableBorder]}>% Completed</Text>
-                <Text style={styles.tableHeaderCell}>Edit</Text>
-              </View>
-               {programs.map((row, idx) => (
-                   <View style={styles.tableRow} key={idx}>
-                     {editIndex === idx ? (
-                       <TextInput
-                         style={[styles.tableInput, styles.tableBorder]}
-                         value={row.program}
-                         onChangeText={(val) => handleChange(idx, 'program', val)}
-                         placeholder="Program Name"
-                       />
-                     ) : (
-                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.program}</Text>
-                     )}
-                     {editIndex === idx ? (
-                       <TextInput
-                         style={[styles.tableInput, styles.tableBorder, errors[idx] && { borderColor: 'red' }]}
-                         value={row.noOfHouses}
-                         onChangeText={(val) => handleChange(idx, 'noOfHouses', val)}
-                         keyboardType="numeric"
-                         placeholder="Required"
-                       />
-                     ) : (
-                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.noOfHouses}</Text>
-                     )}
-                     {editIndex === idx ? (
-                       <TextInput
-                         style={[styles.tableInput, styles.tableBorder]}
-                         value={row.completed}
-                         onChangeText={(val) => handleChange(idx, 'completed', val)}
-                         keyboardType="numeric"
-                         placeholder="Completed"
-                       />
-                     ) : (
-                       <Text style={[styles.tableCell, styles.tableBorder]}>{row.completed}</Text>
-                     )}
-                     <Text style={[styles.tableCell, styles.tableBorder]}>{row.remaining}</Text>
-                     <Text style={[styles.tableCell, styles.tableBorder]}>{row.percentCompleted}</Text>
-                     {editIndex === idx ? (
-                       <Pressable style={styles.saveButton} onPress={() => handleSave(idx)}>
-                         <Text style={styles.saveButtonText}>Save</Text>
-                       </Pressable>
-                     ) : (
-                       <Pressable style={styles.editButton} onPress={() => handleEdit(idx)}>
-                         <Text style={styles.editButtonText}>Edit</Text>
-                       </Pressable>
-                     )}
-                   </View>
-                 ))}
-              <Pressable style={styles.addProgramButton} onPress={handleAddProgram}>
-                <Text style={styles.addProgramButtonText}>+ Add Program</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
+          <ResponsiveTable
+            columns={[
+              { key: 'program', title: 'Program', width: 140 },
+              { key: 'noOfHouses', title: 'No. of Houses', width: 120, required: true },
+              { key: 'completed', title: 'Completed', width: 100 },
+              { key: 'remaining', title: 'Remaining', width: 100 },
+              { key: 'percentCompleted', title: '% Completed', width: 120 }
+            ]}
+            data={programs}
+            editIndex={editIndex}
+            errors={errors}
+            onEdit={handleEdit}
+            onSave={handleSave}
+            onChange={handleChange}
+            onAddRow={handleAddProgram}
+            isLoading={loadingRCM}
+          />
         )
       )}
+
     </ScrollView>
+    </>
   );
 }
 
@@ -338,77 +421,63 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F0F4F3',
-    padding: 20,
-    paddingBottom: 100,
+    padding: spacing.large,
+    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 10,
+    marginBottom: spacing.medium,
     textAlign: 'center',
   },
   text: {
-    fontSize: 16,
+    fontSize: fontSize.large,
     textAlign: 'center',
     color: '#555',
-    marginBottom: 40,
+    marginBottom: spacing.huge,
   },
   importSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    padding: 24,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: borderRadius.xLarge,
+    padding: isSmallDevice() ? spacing.large : spacing.xxLarge,
+    marginTop: spacing.large,
+    ...getShadow(4),
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: fontSize.xLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 8,
+    marginBottom: spacing.small,
     textAlign: 'center',
   },
   sectionDescription: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
+    marginBottom: spacing.xxLarge,
+    lineHeight: spacing.large + 4,
   },
   importButton: {
-    borderRadius: 12,
+    borderRadius: borderRadius.large,
     overflow: 'hidden',
-    shadowColor: '#2E7D32',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
   buttonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: spacing.large,
+    paddingHorizontal: spacing.xxxLarge,
     alignItems: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: fontSize.large,
   },
   fileTypeInfo: {
-    fontSize: 12,
+    fontSize: fontSize.small,
     color: '#888',
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.medium,
     fontStyle: 'italic',
   },
   uploadedFilesContainer: {
@@ -428,108 +497,25 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-  rcmButton: {
-    marginTop: 20,
-    borderRadius: 12,
+  importedFilesButton: {
+    marginTop: spacing.large,
+    borderRadius: borderRadius.large,
     overflow: 'hidden',
-    shadowColor: '#1976D2',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...getShadow(6),
   },
-  tableScroll: {
-    marginTop: 20,
+  importedFilesSection: {
+    marginTop: spacing.large,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: borderRadius.xLarge,
+    padding: spacing.medium,
+    ...getShadow(4),
+    maxHeight: isSmallDevice() ? 400 : 500,
   },
-  tableContainer: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginBottom: 8,
-  },
-  tableHeaderCell: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-    textAlign: 'center',
-    paddingVertical: 6,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    paddingVertical: 8,
-  },
-  tableCell: {
-    fontSize: 14,
-    color: '#555',
-    flex: 1,
-    textAlign: 'center',
-    paddingVertical: 4,
-  },
-  tableInput: {
-    fontSize: 14,
-    color: '#555',
-    flex: 1,
-    textAlign: 'center',
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 4,
-  },
-  tableBorder: {
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-  },
-  editButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginHorizontal: 2,
-  },
-  editButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  saveButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginHorizontal: 2,
-  },
-  saveButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  addProgramButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FF9800',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addProgramButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 14,
+  rcmButton: {
+    marginTop: spacing.large,
+    borderRadius: borderRadius.large,
+    overflow: 'hidden',
+    ...getShadow(6),
   },
 
 });

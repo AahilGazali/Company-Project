@@ -18,20 +18,32 @@ import TypingIndicator from './TypingIndicator';
 import ChatInput from './ChatInput';
 import { ChatMessage } from '../services/geminiService';
 import GeminiService from '../services/geminiService';
+import { ExcelAnalysis } from '../services/excelAnalysisService';
+import { 
+  spacing, 
+  fontSize, 
+  borderRadius, 
+  getSafeAreaPadding,
+  getIconSize,
+  screenDimensions
+} from '../utils/responsive';
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = screenDimensions;
 
 interface ChatInterfaceProps {
   isVisible: boolean;
   onClose: () => void;
+  dataAnalysis?: ExcelAnalysis | null;
 }
 
-export default function ChatInterface({ isVisible, onClose }: ChatInterfaceProps) {
+export default function ChatInterface({ isVisible, onClose, dataAnalysis }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [hasDataContext, setHasDataContext] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const welcomeMessageAdded = useRef(false);
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -42,6 +54,32 @@ export default function ChatInterface({ isVisible, onClose }: ChatInterfaceProps
     }).start();
   }, [isVisible]);
 
+  // Handle data context changes
+  useEffect(() => {
+    if (dataAnalysis) {
+      GeminiService.setDataContext(dataAnalysis);
+      setHasDataContext(true);
+      
+      // Add welcome message with data summary only once per session
+      const dataSummary = GeminiService.getDataSummary();
+      if (dataSummary && !welcomeMessageAdded.current) {
+        addMessage(`📊 Excel data loaded! ${dataSummary}`, false);
+        welcomeMessageAdded.current = true;
+      }
+    } else {
+      GeminiService.setDataContext(null);
+      setHasDataContext(false);
+    }
+  }, [dataAnalysis]);
+
+  // Clear messages when chat is closed
+  useEffect(() => {
+    if (!isVisible) {
+      setMessages([]);
+      welcomeMessageAdded.current = false; // Reset welcome message flag
+    }
+  }, [isVisible]);
+
   const scrollToBottom = () => {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -50,7 +88,7 @@ export default function ChatInterface({ isVisible, onClose }: ChatInterfaceProps
 
   const addMessage = (text: string, isUser: boolean) => {
     const newMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text,
       isUser,
       timestamp: new Date(),
@@ -132,7 +170,9 @@ export default function ChatInterface({ isVisible, onClose }: ChatInterfaceProps
                   </View>
                   <View>
                     <Text style={styles.title}>AI Assistant</Text>
-                    <Text style={styles.subtitle}>Ask me anything!</Text>
+                    <Text style={styles.subtitle}>
+                      {hasDataContext ? 'Ask about your Excel data!' : 'Ask me anything!'}
+                    </Text>
                   </View>
                 </View>
                 <Pressable style={styles.closeButton} onPress={onClose}>
@@ -184,9 +224,9 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   headerGradient: {
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingTop: getSafeAreaPadding().top + spacing.medium,
+    paddingBottom: spacing.large,
+    paddingHorizontal: spacing.large,
   },
   headerContent: {
     flexDirection: 'row',
@@ -196,38 +236,38 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.medium,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getIconSize(40),
+    height: getIconSize(40),
+    borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
+    fontSize: fontSize.xLarge,
     fontWeight: 'bold',
     color: '#FFF',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: fontSize.medium,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getIconSize(40),
+    height: getIconSize(40),
+    borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   messagesContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.large,
   },
   messagesContent: {
-    paddingVertical: 16,
+    paddingVertical: spacing.large,
   },
 }); 
