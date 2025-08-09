@@ -8,7 +8,6 @@ import StorageService from '../services/storageService';
 import ImportedFilesService, { ImportedFile } from '../services/importedFilesService';
 import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
 import ResponsiveTable from '../components/ResponsiveTable';
-import ImportedFilesList from '../components/ImportedFilesList';
 import { 
   spacing, 
   fontSize, 
@@ -27,7 +26,7 @@ export default function DatabaseScreen() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [errors, setErrors] = useState<{ [key: number]: boolean }>({});
   const [loadingRCM, setLoadingRCM] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+
   const [importedFiles, setImportedFiles] = useState<ImportedFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [showImportedFiles, setShowImportedFiles] = useState(false);
@@ -159,8 +158,6 @@ export default function DatabaseScreen() {
       );
 
       if (uploadResult.success) {
-        setUploadedFiles(prev => [...prev, uploadResult.url!]);
-        
         // Save file record to database
         try {
           const fileRecord = {
@@ -277,8 +274,87 @@ export default function DatabaseScreen() {
     setEditIndex(programs.length);
   };
 
+  // Format file size function
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Format date function to handle Firestore Timestamps
+  const formatDate = (date: any): string => {
+    try {
+      console.log('📅 Formatting date:', date, 'Type:', typeof date);
+      let dateObj: Date;
+      
+      // Handle Firestore Timestamp
+      if (date && typeof date.toDate === 'function') {
+        console.log('📅 Using Firestore Timestamp toDate()');
+        dateObj = date.toDate();
+      }
+      // Handle Firestore Timestamp with seconds
+      else if (date && date.seconds) {
+        dateObj = new Date(date.seconds * 1000);
+      }
+      // Handle regular Date object
+      else if (date instanceof Date) {
+        dateObj = date;
+      }
+      // Handle date string
+      else if (typeof date === 'string') {
+        dateObj = new Date(date);
+      }
+      // Handle timestamp number
+      else if (typeof date === 'number') {
+        dateObj = new Date(date);
+      }
+      else {
+        return 'Unknown date';
+      }
+
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid date';
+      }
+
+      // Format date with time
+      return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    } catch (error) {
+      console.error('Error formatting date:', error, date);
+      return 'Date error';
+    }
+  };
+
   const handleFileDeleted = (fileId: string) => {
     setImportedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  // Handle file deletion
+  const handleDeleteFile = async (file: ImportedFile) => {
+    Alert.alert(
+      'Delete File',
+      `Are you sure you want to delete "${file.originalName}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (file.id) {
+                await ImportedFilesService.deleteImportedFile(file.id);
+                handleFileDeleted(file.id);
+                Alert.alert('Success', 'File deleted successfully');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete file');
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Analyze an existing imported file for chat context
@@ -332,18 +408,6 @@ export default function DatabaseScreen() {
         <Text style={styles.fileTypeInfo}>
           Supported formats: .xlsx, .xls
         </Text>
-
-        {/* Show uploaded files */}
-        {uploadedFiles.length > 0 && (
-          <View style={styles.uploadedFilesContainer}>
-            <Text style={styles.uploadedFilesTitle}>Uploaded Files:</Text>
-            {uploadedFiles.map((url, index) => (
-              <Text key={`file-${index}-${url.substring(url.length - 10)}`} style={styles.uploadedFileUrl}>
-                File {index + 1}: {url.substring(0, 50)}...
-              </Text>
-            ))}
-          </View>
-        )}
       </View>
 
       {/* Imported Files Section */}
@@ -366,12 +430,55 @@ export default function DatabaseScreen() {
       {/* Imported Files List */}
       {showImportedFiles && (
         <View style={styles.importedFilesSection}>
-          <ImportedFilesList
-            files={importedFiles}
-            onRefresh={loadImportedFiles}
-            refreshing={loadingFiles}
-            onFileDeleted={handleFileDeleted}
-          />
+          <Text style={styles.sectionTitle}>Your Imported Files</Text>
+          
+          {loadingFiles ? (
+            <Text style={styles.loadingText}>Loading files...</Text>
+          ) : importedFiles.length === 0 ? (
+            <View style={styles.emptyFilesContainer}>
+              <Text style={styles.emptyFilesText}>
+                No imported files found. Upload an Excel file to get started!
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.filesTable}>
+              {/* Table Header */}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, { flex: 2 }]}>File Name</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Size</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Action</Text>
+              </View>
+              
+              {/* Table Rows */}
+              {importedFiles.map((file) => (
+                <View key={file.id} style={styles.tableRow}>
+                  <View style={{ flex: 2 }}>
+                    <Text style={styles.fileName} numberOfLines={1}>
+                      {file.originalName}
+                    </Text>
+                    <Text style={styles.fileDate}>
+                      {formatDate(file.uploadedAt)}
+                    </Text>
+                  </View>
+                  
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fileSize}>
+                      {formatFileSize(file.fileSize)}
+                    </Text>
+                  </View>
+                  
+                  <View style={{ flex: 1 }}>
+                    <Pressable 
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteFile(file)}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -480,23 +587,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.medium,
     fontStyle: 'italic',
   },
-  uploadedFilesContainer: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-  },
-  uploadedFilesTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-    marginBottom: 8,
-  },
-  uploadedFileUrl: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
+
   importedFilesButton: {
     marginTop: spacing.large,
     borderRadius: borderRadius.large,
@@ -516,6 +607,75 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.large,
     overflow: 'hidden',
     ...getShadow(6),
+  },
+  loadingText: {
+    textAlign: 'center',
+    fontSize: fontSize.medium,
+    color: '#666',
+    marginTop: spacing.large,
+  },
+  emptyFilesContainer: {
+    padding: spacing.large,
+    alignItems: 'center',
+  },
+  emptyFilesText: {
+    fontSize: fontSize.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: fontSize.medium + 4,
+  },
+  filesTable: {
+    marginTop: spacing.medium,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#4CAF50',
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.medium,
+    borderTopLeftRadius: borderRadius.medium,
+    borderTopRightRadius: borderRadius.medium,
+  },
+  tableHeaderText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: fontSize.medium,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    alignItems: 'center',
+  },
+  fileName: {
+    fontSize: fontSize.medium,
+    color: '#333',
+    fontWeight: '600',
+  },
+  fileDate: {
+    fontSize: fontSize.small,
+    color: '#666',
+    marginTop: 2,
+  },
+  fileSize: {
+    fontSize: fontSize.medium,
+    color: '#666',
+    textAlign: 'center',
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+    borderRadius: borderRadius.small,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#FFF',
+    fontSize: fontSize.small,
+    fontWeight: '600',
   },
 
 });

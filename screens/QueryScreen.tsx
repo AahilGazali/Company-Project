@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -45,33 +46,42 @@ export default function QueryScreen() {
   const [retryingAnalysis, setRetryingAnalysis] = useState(false);
 
   // Load the latest imported Excel file for data context
-  useEffect(() => {
-    const loadLatestExcelFile = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) {
-          setLoadingLatestFile(false);
-          return;
-        }
+  const loadLatestExcelFile = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setLoadingLatestFile(false);
+        return;
+      }
 
-        console.log('🔍 Loading latest Excel file for QueryScreen...');
-        const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+      console.log('🔍 Loading latest Excel file for QueryScreen...');
+      setLoadingLatestFile(true);
+      const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+      
+      if (files.length > 0) {
+        // Get the most recent file
+        const latestFile = files[0]; // Files are ordered by uploadedAt desc
+        setLatestFile(latestFile);
         
-        if (files.length > 0) {
-          // Get the most recent file
-          const latestFile = files[0]; // Files are ordered by uploadedAt desc
-          setLatestFile(latestFile);
+        // Check if this is a different file than what we currently have
+        const isDifferentFile = !currentDataAnalysis || 
+          currentDataAnalysis.fileName !== latestFile.originalName;
+        
+        if (isDifferentFile) {
+          console.log('📊 New file detected, analyzing:', latestFile.originalName);
+          // Clear current analysis first
+          setCurrentDataAnalysis(null);
+          GeminiService.setDataContext(null);
           
           // Analyze the file for AI context
           try {
-            console.log('📊 Analyzing latest file for chat context:', latestFile.originalName);
             const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName);
             setCurrentDataAnalysis(analysis);
             
             // Set the context in GeminiService
             GeminiService.setDataContext(analysis);
             
-            console.log('✅ Excel analysis loaded for QueryScreen');
+            console.log('✅ Excel analysis loaded for QueryScreen:', latestFile.originalName);
           } catch (analysisError) {
             console.error('❌ Error analyzing file for QueryScreen:', analysisError);
             console.log('ℹ️ Continuing without Excel data analysis. Chat will work in general mode.');
@@ -80,17 +90,34 @@ export default function QueryScreen() {
             // Continue without analysis - chat will work in general mode
           }
         } else {
-          console.log('ℹ️ No imported files found for data context');
+          console.log('📊 Same file as current, skipping analysis:', latestFile.originalName);
         }
-      } catch (error) {
-        console.error('❌ Error loading latest file:', error);
-      } finally {
-        setLoadingLatestFile(false);
+      } else {
+        console.log('ℹ️ No imported files found for data context');
+        // Clear current data if no files exist
+        setLatestFile(null);
+        setCurrentDataAnalysis(null);
+        GeminiService.setDataContext(null);
       }
-    };
+    } catch (error) {
+      console.error('❌ Error loading latest file:', error);
+    } finally {
+      setLoadingLatestFile(false);
+    }
+  };
 
+  // Load latest file on component mount
+  useEffect(() => {
     loadLatestExcelFile();
   }, []);
+
+  // Refresh latest file whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 QueryScreen focused, refreshing latest file...');
+      loadLatestExcelFile();
+    }, [])
+  );
 
   // Retry analysis function
   const retryAnalysis = async () => {
@@ -184,7 +211,7 @@ export default function QueryScreen() {
                       <View style={styles.dataStatusText}>
                         <Text style={styles.dataStatusTitle}>Excel Data Connected</Text>
                         <Text style={styles.dataStatusSubtitle}>
-                          {currentDataAnalysis.fileName} • {currentDataAnalysis.keyFields.length} fields
+                          Latest File: {currentDataAnalysis.fileName} • {currentDataAnalysis.keyFields.length} fields
                         </Text>
                       </View>
                     </View>
