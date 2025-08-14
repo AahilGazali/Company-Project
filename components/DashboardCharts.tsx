@@ -31,7 +31,7 @@ export default function DashboardCharts({ dashboardData }: DashboardChartsProps)
         </Text>
       </View>
 
-      {/* Location Charts */}
+      {/* Location Charts - Top 10 locations with high repetition */}
       {dashboardData.locationCharts.map((chart, index) => (
         <LocationChartComponent key={`location-${index}`} chart={chart} />
       ))}
@@ -41,7 +41,7 @@ export default function DashboardCharts({ dashboardData }: DashboardChartsProps)
         <ActionChartComponent key={`action-${index}`} chart={chart} />
       ))}
 
-      {/* MMT Charts */}
+      {/* MMT Charts - Equipment maintenance and replacement counts */}
       {dashboardData.mmtCharts.map((chart, index) => (
         <MMTChartComponent key={`mmt-${index}`} chart={chart} />
       ))}
@@ -104,11 +104,11 @@ function LocationChartComponent({ chart }: { chart: LocationChart }) {
       }
     };
 
-  // Prepare data for bar chart
+  // Prepare data for bar chart - Show all 10 locations
   const barData = {
-    labels: chart.data.slice(0, 8).map(item => item.label),
+    labels: chart.data.slice(0, 10).map(item => item.label),
     datasets: [{
-      data: chart.data.slice(0, 8).map(item => item.value)
+      data: chart.data.slice(0, 10).map(item => item.value)
     }]
   };
 
@@ -116,13 +116,13 @@ function LocationChartComponent({ chart }: { chart: LocationChart }) {
     <View style={styles.chartContainer}>
       <Text style={styles.chartTitle}>{chart.title}</Text>
       <Text style={styles.chartSubtitle}>
-        Showing top {Math.min(8, chart.data.length)} locations
+        Showing top {Math.min(10, chart.data.length)} locations with high repetition
       </Text>
       
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <BarChart
           data={barData}
-          width={Math.max(chartWidth, chart.data.length * 100)}
+          width={Math.max(chartWidth, 10 * 100)} // Fixed width for 10 locations
           height={320}
           chartConfig={chartConfig}
           verticalLabelRotation={0}

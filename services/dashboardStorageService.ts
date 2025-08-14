@@ -70,7 +70,12 @@ export class DashboardStorageService {
       
       return null;
 
-    } catch (error) {
+    } catch (error: any) {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when fetching dashboard by file ID (this is normal):', error.message);
+        return null;
+      }
       console.error('❌ Error fetching dashboard by file ID:', error);
       return null;
     }
@@ -99,7 +104,12 @@ export class DashboardStorageService {
       
       return dashboards;
 
-    } catch (error) {
+    } catch (error: any) {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when fetching user dashboards (this is normal):', error.message);
+        return [];
+      }
       console.error('❌ Error fetching user dashboards:', error);
       return [];
     }
@@ -148,8 +158,70 @@ export class DashboardStorageService {
       console.log('✅ Dashboard deleted successfully:', dashboardId);
       return true;
 
-    } catch (error) {
+    } catch (error: any) {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when deleting dashboard (this is normal):', error.message);
+        return false;
+      }
       console.error('❌ Error deleting dashboard:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete dashboard by file ID
+   */
+  static async deleteDashboardByFileId(fileId: string): Promise<boolean> {
+    try {
+      const dashboard = await this.getDashboardByFileId(fileId);
+      if (dashboard && dashboard.id) {
+        try {
+          await deleteDoc(doc(db, this.COLLECTION_NAME, dashboard.id));
+          console.log('✅ Dashboard deleted by file ID:', fileId);
+          return true;
+        } catch (deleteError: any) {
+          // Handle permission errors gracefully
+          if (deleteError.code === 'permission-denied' || deleteError.message?.includes('permission')) {
+            console.warn('⚠️ Permission denied when deleting dashboard (this is normal):', deleteError.message);
+            return false;
+          }
+          throw deleteError; // Re-throw other errors
+        }
+      } else {
+        // Dashboard not found or permission denied - this is normal
+        console.log('ℹ️ No dashboard found or accessible for file ID:', fileId);
+        return false;
+      }
+
+    } catch (error: any) {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when deleting dashboard by file ID (this is normal):', error.message);
+        return false;
+      }
+      console.error('❌ Error deleting dashboard by file ID:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete all dashboards for a user (cleanup)
+   */
+  static async deleteAllUserDashboards(userId: string): Promise<boolean> {
+    try {
+      const userDashboards = await this.getUserDashboards(userId);
+      for (const dashboard of userDashboards) {
+        if (dashboard.id) {
+          await deleteDoc(doc(db, this.COLLECTION_NAME, dashboard.id));
+          console.log('🗑️ Deleted dashboard:', dashboard.fileName);
+        }
+      }
+      console.log('✅ All user dashboards deleted');
+      return true;
+
+    } catch (error) {
+      console.error('❌ Error deleting all user dashboards:', error);
       return false;
     }
   }
@@ -162,9 +234,68 @@ export class DashboardStorageService {
       const dashboard = await this.getDashboardByFileId(fileId);
       return dashboard !== null;
 
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when checking dashboard existence (this is normal):', error.message);
+        return false;
+      }
       console.error('❌ Error checking dashboard existence:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get dashboard count for a user (for debugging)
+   */
+  static async getUserDashboardCount(userId: string): Promise<number> {
+    try {
+      const dashboards = await this.getUserDashboards(userId);
+      return dashboards.length;
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when getting dashboard count');
+        return 0;
+      }
+      console.error('❌ Error getting dashboard count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if dashboard can be deleted (permissions check)
+   */
+  static async canDeleteDashboard(dashboardId: string): Promise<boolean> {
+    try {
+      // Try to read the dashboard to check permissions
+      const dashboardRef = doc(db, this.COLLECTION_NAME, dashboardId);
+      await getDoc(dashboardRef);
+      return true;
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ No permission to access dashboard:', dashboardId);
+        return false;
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Check if we have access to the dashboard collection
+   */
+  static async canAccessDashboardCollection(): Promise<boolean> {
+    try {
+      // Try to read the collection without any filters first
+      const q = query(collection(db, this.COLLECTION_NAME));
+      await getDocs(q);
+      return true;
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ No permission to access dashboard collection');
+        return false;
+      }
+      // For other errors, assume we have access (they might be network or other issues)
+      console.warn('⚠️ Error checking dashboard collection access (assuming access):', error.message);
+      return true;
     }
   }
 

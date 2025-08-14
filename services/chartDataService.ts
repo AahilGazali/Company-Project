@@ -75,26 +75,27 @@ export class ChartDataService {
       
       let totalRecords = 0;
 
-      for (const sheetAnalysis of analysis.sheets) {
-        console.log(`📋 Processing sheet: ${sheetAnalysis.name}`);
+      // Process the full dataset instead of individual sheets
+      if (analysis.fullData && analysis.fullData.length > 0) {
+        console.log(`📋 Processing full dataset: ${analysis.fullData.length} records`);
         
-        const sheetData = await this.extractSheetData(workbook, sheetAnalysis);
-        totalRecords += sheetData.length;
+        const fullData = analysis.fullData;
+        totalRecords = fullData.length;
 
         // Generate location-based charts
-        const locationChart = this.generateLocationChart(sheetAnalysis.name, sheetData);
+        const locationChart = this.generateLocationChart('Main Dataset', fullData);
         if (locationChart) locationCharts.push(locationChart);
 
         // Generate action-based charts
-        const actionChart = this.generateActionChart(sheetAnalysis.name, sheetData);
+        const actionChart = this.generateActionChart('Main Dataset', fullData);
         if (actionChart) actionCharts.push(actionChart);
 
         // Generate MMT-based charts
-        const mmtChart = this.generateMMTChart(sheetAnalysis.name, sheetData);
+        const mmtChart = this.generateMMTChart('Main Dataset', fullData);
         if (mmtChart) mmtCharts.push(mmtChart);
 
         // Generate timeline charts (if date fields exist)
-        const timelineChart = this.generateTimelineChart(sheetAnalysis.name, sheetData, sheetAnalysis);
+        const timelineChart = this.generateTimelineChart('Main Dataset', fullData, analysis);
         if (timelineChart) timelineCharts.push(timelineChart);
       }
 
@@ -151,7 +152,7 @@ export class ChartDataService {
   }
 
   /**
-   * Generate location-based chart
+   * Generate location-based chart - Top 10 locations with high repetition
    */
   private static generateLocationChart(sheetName: string, data: any[]): LocationChart | null {
     // Find location-related columns
@@ -161,10 +162,10 @@ export class ChartDataService {
     const locationColumn = locationColumns[0];
     const locationCounts = this.countOccurrences(data, locationColumn);
     
-    // Sort by count and take top 15
+    // Sort by count and take top 10 (as requested)
     const sortedData = Object.entries(locationCounts)
       .sort(([,a], [,b]) => b - a)
-      .slice(0, 15)
+      .slice(0, 10)
       .map(([label, value], index) => ({
         label: this.truncateLabel(label),
         value,
@@ -209,30 +210,61 @@ export class ChartDataService {
   }
 
   /**
-   * Generate MMT-based chart
+   * Generate MMT-based chart - Equipment replacement and maintenance counts
    */
   private static generateMMTChart(sheetName: string, data: any[]): MMTChart | null {
-    // Find MMT-related columns
-    const mmtColumns = this.findMMTColumns(data);
-    if (mmtColumns.length === 0) return null;
-
-    // Count MMTs by different categories
-    const mmtColumn = mmtColumns[0];
-    const mmtCounts = this.countOccurrences(data, mmtColumn);
+    // Find action/description columns for equipment analysis
+    const actionColumns = this.findActionColumns(data);
+    const descriptionColumns = this.findDescriptionColumns(data);
     
-    // For MMT analysis, we might want to show distribution or status
-    const chartData = Object.entries(mmtCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 12)
+    if (actionColumns.length === 0 && descriptionColumns.length === 0) return null;
+
+    // Define equipment keywords to search for
+    const equipmentKeywords = {
+      'Compressor': ['compressor', 'comp', 'ac compressor', 'air compressor'],
+      'Unit': ['unit', 'ac unit', 'air conditioning unit', 'hvac unit'],
+      'Coils': ['coil', 'coils', 'evaporator coil', 'condenser coil'],
+      'Motors': ['motor', 'motors', 'fan motor', 'blower motor'],
+      'Filter Cleaned': ['filter', 'filters', 'filter cleaned', 'filter replacement', 'filter change']
+    };
+
+    // Count occurrences of each equipment type
+    const equipmentCounts: { [key: string]: number } = {};
+    
+    // Initialize counts
+    Object.keys(equipmentKeywords).forEach(key => {
+      equipmentCounts[key] = 0;
+    });
+
+    // Search through action and description columns
+    const searchColumns = [...actionColumns, ...descriptionColumns];
+    
+    data.forEach(record => {
+      searchColumns.forEach(column => {
+        const cellValue = record[column]?.toString().toLowerCase() || '';
+        
+        Object.entries(equipmentKeywords).forEach(([equipmentType, keywords]) => {
+          keywords.forEach(keyword => {
+            if (cellValue.includes(keyword)) {
+              equipmentCounts[equipmentType]++;
+            }
+          });
+        });
+      });
+    });
+
+    // Convert to chart data format
+    const chartData = Object.entries(equipmentCounts)
+      .filter(([, count]) => count > 0) // Only show equipment types with counts > 0
       .map(([label, value], index) => ({
-        label: this.truncateLabel(label),
+        label,
         value,
         color: this.getColorForIndex(index)
       }));
 
     return {
       type: 'mmt',
-      title: `${sheetName} - MMT Distribution`,
+      title: `${sheetName} - Equipment Maintenance & Replacement`,
       data: chartData,
       totalCount: data.length
     };
@@ -244,13 +276,16 @@ export class ChartDataService {
   private static generateTimelineChart(
     sheetName: string, 
     data: any[], 
-    sheetAnalysis: ExcelSheetAnalysis
+    analysis: ExcelAnalysis
   ): TimelineChart | null {
-    // Find date columns
-    const dateColumns = sheetAnalysis.columns.filter(col => col.type === 'date');
+    // Find date columns from the analysis
+    const dateColumns = analysis.columns.filter(col => 
+      col.toLowerCase().includes('date') || 
+      col.toLowerCase().includes('functional date')
+    );
     if (dateColumns.length === 0) return null;
 
-    const dateColumn = dateColumns[0].name;
+    const dateColumn = dateColumns[0];
     
     // Group data by month
     const monthCounts: { [key: string]: number } = {};
@@ -343,6 +378,21 @@ export class ChartDataService {
       header.toLowerCase().includes('ticket') ||
       header.toLowerCase().includes('id') ||
       header.toLowerCase().includes('number')
+    );
+  }
+
+  /**
+   * Find description-related columns
+   */
+  private static findDescriptionColumns(data: any[]): string[] {
+    if (data.length === 0) return [];
+    
+    const headers = Object.keys(data[0]);
+    return headers.filter(header => 
+      header.toLowerCase().includes('description') || 
+      header.toLowerCase().includes('details') ||
+      header.toLowerCase().includes('notes') ||
+      header.toLowerCase().includes('comments')
     );
   }
 

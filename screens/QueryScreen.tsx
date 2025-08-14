@@ -11,10 +11,12 @@ import {
   StyleSheet, 
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Animated
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import ChatButton from '../components/ChatButton';
@@ -170,9 +172,9 @@ export default function QueryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Gradient Background */}
+      {/* Emerald Gradient Background */}
       <LinearGradient
-        colors={['#4CAF50', '#2E7D32', '#1B5E20']}
+        colors={['#10b981', '#059669', '#047857']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -194,7 +196,7 @@ export default function QueryScreen() {
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>💬</Text>
+                  <Ionicons name="chatbubble-ellipses" size={isTablet() ? 28 : 20} color="#059669" />
                 </View>
                 <Text style={styles.title}>Ask a Question</Text>
                 <Text style={styles.subtitle}>
@@ -207,17 +209,20 @@ export default function QueryScreen() {
                 <View style={styles.dataStatus}>
                   {currentDataAnalysis ? (
                     <View style={styles.dataConnected}>
-                      <Text style={styles.dataStatusIcon}>📊</Text>
+                      <Ionicons name="server" size={isTablet() ? 24 : 20} color="#059669" style={styles.dataStatusIcon} />
                       <View style={styles.dataStatusText}>
                         <Text style={styles.dataStatusTitle}>Excel Data Connected</Text>
                         <Text style={styles.dataStatusSubtitle}>
-                          Latest File: {currentDataAnalysis.fileName} • {currentDataAnalysis.keyFields.length} fields
+                          Latest File: {currentDataAnalysis.fileName} • {currentDataAnalysis.columns.length} fields
                         </Text>
+                      </View>
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeBadgeText}>Active</Text>
                       </View>
                     </View>
                   ) : latestFile ? (
-                    <View style={styles.dataDisconnected}>
-                      <Text style={styles.dataStatusIcon}>⚠️</Text>
+                    <View style={styles.dataWarning}>
+                      <Ionicons name="warning" size={isTablet() ? 24 : 20} color="#d97706" style={styles.dataStatusIcon} />
                       <View style={styles.dataStatusText}>
                         <Text style={styles.dataStatusTitle}>File Found - Analysis Failed</Text>
                         <Text style={styles.dataStatusSubtitle}>
@@ -229,14 +234,20 @@ export default function QueryScreen() {
                         onPress={retryAnalysis}
                         disabled={retryingAnalysis}
                       >
+                        <Ionicons 
+                          name="refresh" 
+                          size={isTablet() ? 18 : 16} 
+                          color="#d97706" 
+                          style={retryingAnalysis ? styles.spinningIcon : undefined}
+                        />
                         <Text style={styles.retryButtonText}>
-                          {retryingAnalysis ? '🔄' : '🔄 Retry'}
+                          {retryingAnalysis ? '' : ' Retry'}
                         </Text>
                       </Pressable>
                     </View>
                   ) : (
                     <View style={styles.dataDisconnected}>
-                      <Text style={styles.dataStatusIcon}>📄</Text>
+                      <Ionicons name="document-text" size={isTablet() ? 24 : 20} color="#6b7280" style={styles.dataStatusIcon} />
                       <View style={styles.dataStatusText}>
                         <Text style={styles.dataStatusTitle}>No Data Connected</Text>
                         <Text style={styles.dataStatusSubtitle}>
@@ -255,7 +266,7 @@ export default function QueryScreen() {
                   <TextInput
                     style={[
                       styles.input,
-                      queryText.length > 500 && { borderColor: '#F44336', borderWidth: 2 }
+                      queryText.length > 500 && { borderColor: '#ef4444', borderWidth: 2 }
                     ]}
                     value={queryText}
                     onChangeText={(text) => {
@@ -265,16 +276,16 @@ export default function QueryScreen() {
                       }
                     }}
                     placeholder="Type your question or concern here..."
-                    placeholderTextColor="#A5A5A5"
+                    placeholderTextColor="#9ca3af"
                     multiline
-                    numberOfLines={isSmallDevice() ? 4 : isTablet() ? 8 : 6}
+                    numberOfLines={isSmallDevice() ? 4 : isTablet() ? 6 : 5}
                     textAlignVertical="top"
                     maxLength={500}
                   />
                   <Text style={[
                     styles.characterCount,
-                    queryText.length > 450 && { color: '#FF9800' },
-                    queryText.length > 500 && { color: '#F44336' }
+                    queryText.length > 450 && { color: '#f59e0b' },
+                    queryText.length > 500 && { color: '#ef4444' }
                   ]}>
                     {queryText.length}/500 characters
                   </Text>
@@ -286,33 +297,44 @@ export default function QueryScreen() {
                   disabled={isSubmitting}
                 >
                   <LinearGradient
-                    colors={isSubmitting ? ['#9E9E9E', '#757575'] : ['#4CAF50', '#2E7D32']}
+                    colors={isSubmitting ? ['#9ca3af', '#6b7280'] : ['#10b981', '#059669']}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.buttonText}>
-                      {isSubmitting ? 'Submitting...' : 'Submit Query'}
-                    </Text>
+                    {isSubmitting ? (
+                      <View style={styles.buttonContent}>
+                        <Ionicons name="refresh" size={isTablet() ? 20 : 18} color="#ffffff" style={styles.spinningIcon} />
+                        <Text style={styles.buttonText}>Submitting...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.buttonText}>Submit Query</Text>
+                    )}
                   </LinearGradient>
                 </Pressable>
 
                 {/* Tips Section */}
                 <View style={styles.tipsContainer}>
-                  <Text style={styles.tipsTitle}>
-                    {currentDataAnalysis ? '🤖 AI will analyze your Excel data automatically' : '💡 Tips for better queries:'}
-                  </Text>
+                  <View style={styles.tipsHeader}>
+                    <Ionicons name="sparkles" size={isTablet() ? 20 : 18} color="#059669" />
+                    <Text style={styles.tipsTitle}>
+                      {currentDataAnalysis 
+                        ? 'AI will analyze your Excel data automatically'
+                        : 'Tips for better queries:'
+                      }
+                    </Text>
+                  </View>
                   {currentDataAnalysis ? (
                     <Text style={styles.tipText}>
                       Ask any question about your data - the AI will automatically detect keywords, 
                       field names, and context from your Excel file to provide intelligent answers.
                     </Text>
                   ) : (
-                    <>
+                    <View style={styles.tipsList}>
                       <Text style={styles.tipText}>• Be specific and clear</Text>
                       <Text style={styles.tipText}>• Include relevant details</Text>
                       <Text style={styles.tipText}>• We'll respond within 24 hours</Text>
-                    </>
+                    </View>
                   )}
                 </View>
               </View>
@@ -365,140 +387,143 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.large,
-    paddingVertical: spacing.huge,
-    paddingTop: getSafeAreaPadding().top + spacing.large,
-    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
+    paddingVertical: spacing.xLarge,
+    paddingTop: getSafeAreaPadding().top + spacing.medium,
+    paddingBottom: spacing.xLarge,
   },
   queryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: borderRadius.xxxLarge,
-    padding: getCardPadding(),
-    width: getContainerWidth(0.9),
-    maxHeight: screenDimensions.height * (isSmallDevice() ? 0.8 : 0.7),
+    padding: isTablet() ? spacing.xLarge : spacing.medium,
+    width: getContainerWidth(isTablet() ? 0.75 : 0.85),
+    maxWidth: 500,
     ...getShadow(10),
+    elevation: Platform.OS === 'android' ? 10 : undefined,
   },
   header: {
     alignItems: 'center',
-    marginBottom: isSmallDevice() ? spacing.large : spacing.xLarge,
-  },
-  iconContainer: {
-    width: getIconSize(60),
-    height: getIconSize(60),
-    borderRadius: getIconSize(30),
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: spacing.medium,
   },
+  iconContainer: {
+    width: isTablet() ? getIconSize(60) : getIconSize(45),
+    height: isTablet() ? getIconSize(60) : getIconSize(45),
+    borderRadius: isTablet() ? getIconSize(30) : getIconSize(22.5),
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.small,
+  },
   icon: {
-    fontSize: getIconSize(30),
+    fontSize: isTablet() ? getIconSize(40) : getIconSize(30),
   },
   title: {
-    fontSize: fontSize.xxxLarge,
+    fontSize: isTablet() ? fontSize.xLarge : fontSize.large,
     fontWeight: 'bold',
-    color: '#2E7D32',
-    marginBottom: spacing.small,
+    color: '#047857',
+    marginBottom: spacing.tiny,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: fontSize.medium,
+    fontSize: fontSize.small,
     color: '#666',
     textAlign: 'center',
-    lineHeight: fontSize.medium + 4,
-    paddingHorizontal: isSmallDevice() ? 0 : spacing.medium,
+    lineHeight: fontSize.small + 4,
+    paddingHorizontal: spacing.small,
   },
   form: {
     width: '100%',
   },
   inputContainer: {
-    marginBottom: spacing.large,
+    marginBottom: spacing.medium,
   },
   inputLabel: {
-    fontSize: fontSize.medium,
+    fontSize: isTablet() ? fontSize.large : fontSize.medium,
     fontWeight: '600',
-    color: '#2E7D32',
-    marginBottom: spacing.small,
+    color: '#047857',
+    marginBottom: isTablet() ? spacing.medium : spacing.small,
   },
   input: {
     backgroundColor: '#F8F9FA',
-    padding: spacing.medium,
+    padding: spacing.small,
     borderRadius: borderRadius.large,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    fontSize: fontSize.medium,
+    fontSize: fontSize.small,
     color: '#333',
-    minHeight: isSmallDevice() ? 100 : isTablet() ? 120 : 110,
+    minHeight: 80,
     textAlignVertical: 'top',
-    maxHeight: 200,
+    maxHeight: 120,
   },
   characterCount: {
-    fontSize: fontSize.small,
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
     color: '#999',
     textAlign: 'right',
-    marginTop: spacing.small,
+    marginTop: isTablet() ? spacing.medium : spacing.small,
   },
   button: {
-    marginBottom: spacing.large,
+    marginBottom: spacing.medium,
     borderRadius: borderRadius.large,
     overflow: 'hidden',
     ...getShadow(6),
+    elevation: Platform.OS === 'android' ? 6 : undefined,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonGradient: {
-    paddingVertical: spacing.medium,
-    paddingHorizontal: spacing.xxxLarge,
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.xxLarge,
     alignItems: 'center',
-    minHeight: isSmallDevice() ? 44 : 48,
+    minHeight: 44,
     justifyContent: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: fontSize.large,
+    fontSize: isTablet() ? fontSize.xLarge : fontSize.large,
   },
   tipsContainer: {
-    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
     borderRadius: borderRadius.large,
-    padding: spacing.medium,
+    padding: spacing.small,
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
-    marginTop: isSmallDevice() ? 0 : spacing.small,
+    borderLeftColor: '#10b981',
+    marginTop: spacing.small,
   },
   tipsTitle: {
-    fontSize: fontSize.small,
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
     fontWeight: '600',
-    color: '#2E7D32',
-    marginBottom: spacing.small,
+    color: '#047857',
+    marginBottom: 0,
+    marginLeft: spacing.small,
   },
   tipText: {
-    fontSize: fontSize.small,
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
     color: '#666',
-    marginBottom: spacing.tiny,
-    lineHeight: fontSize.small + 4,
+    marginBottom: isTablet() ? spacing.small : spacing.tiny,
+    lineHeight: (isTablet() ? fontSize.medium : fontSize.small) + 4,
   },
   chatbotContainer: {
     position: 'absolute',
-    bottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    bottom: spacing.xLarge,
     right: spacing.large,
     zIndex: 1000,
   },
-  // Decorative elements - responsive positioning
+  // Decorative elements - positioned around the card
   decorativeCircle1: {
     position: 'absolute',
-    top: screenDimensions.height * 0.15,
-    left: -spacing.huge - spacing.medium,
-    width: getIconSize(100),
-    height: getIconSize(100),
-    borderRadius: getIconSize(50),
+    top: -spacing.huge,
+    left: -spacing.huge,
+    width: getIconSize(80),
+    height: getIconSize(80),
+    borderRadius: getIconSize(40),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   decorativeCircle2: {
     position: 'absolute',
-    bottom: screenDimensions.height * 0.2,
-    right: -spacing.xLarge - spacing.medium,
+    bottom: -spacing.xLarge,
+    right: -spacing.xLarge,
     width: getIconSize(60),
     height: getIconSize(60),
     borderRadius: getIconSize(30),
@@ -506,65 +531,104 @@ const styles = StyleSheet.create({
   },
   decorativeCircle3: {
     position: 'absolute',
-    top: screenDimensions.height * 0.25,
-    right: spacing.large,
+    top: spacing.large,
+    right: -spacing.large,
     width: getIconSize(40),
     height: getIconSize(40),
     borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   dataStatus: {
-    marginTop: spacing.medium,
+    marginTop: spacing.small,
     marginBottom: spacing.small,
   },
   dataConnected: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: borderRadius.medium,
-    padding: spacing.medium,
+    padding: spacing.small,
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: '#10b981',
+  },
+  dataWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    borderRadius: borderRadius.medium,
+    padding: spacing.small,
+    borderLeftWidth: 4,
+    borderLeftColor: '#d97706',
   },
   dataDisconnected: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(158, 158, 158, 0.1)',
     borderRadius: borderRadius.medium,
-    padding: spacing.medium,
+    padding: spacing.small,
     borderLeftWidth: 4,
     borderLeftColor: '#9E9E9E',
   },
   dataStatusIcon: {
-    fontSize: fontSize.xLarge,
-    marginRight: spacing.medium,
+    fontSize: isTablet() ? fontSize.xxLarge : fontSize.xLarge,
+    marginRight: isTablet() ? spacing.large : spacing.medium,
   },
   dataStatusText: {
     flex: 1,
   },
   dataStatusTitle: {
-    fontSize: fontSize.medium,
+    fontSize: isTablet() ? fontSize.large : fontSize.medium,
     fontWeight: '600',
-    color: '#2E7D32',
-    marginBottom: 2,
+    color: '#047857',
+    marginBottom: isTablet() ? 4 : 2,
   },
   dataStatusSubtitle: {
-    fontSize: fontSize.small,
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
     color: '#666',
-    lineHeight: fontSize.small + 4,
+    lineHeight: (isTablet() ? fontSize.medium : fontSize.small) + 4,
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#d97706',
     borderRadius: borderRadius.small,
-    paddingHorizontal: spacing.small,
-    paddingVertical: spacing.tiny,
-    marginLeft: spacing.small,
-    minWidth: 60,
+    paddingHorizontal: isTablet() ? spacing.medium : spacing.small,
+    paddingVertical: isTablet() ? spacing.small : spacing.tiny,
+    marginLeft: isTablet() ? spacing.medium : spacing.small,
+    minWidth: isTablet() ? 80 : 60,
     alignItems: 'center',
+    flexDirection: 'row',
   },
   retryButtonText: {
-    color: '#FFF',
-    fontSize: fontSize.small,
+    color: '#ffffff',
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
     fontWeight: '600',
+  },
+  activeBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+    borderRadius: borderRadius.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  activeBadgeText: {
+    color: '#059669',
+    fontSize: fontSize.small,
+    fontWeight: 'bold',
+  },
+  spinningIcon: {
+    marginRight: spacing.small,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.small,
+  },
+  tipsList: {
+    marginTop: spacing.small,
   },
 });

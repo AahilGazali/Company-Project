@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, getDocs, query, where, orderBy, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, getDocs, getDoc, query, where, orderBy, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 export interface ImportedFile {
@@ -84,6 +84,41 @@ export class ImportedFilesService {
     }
   }
 
+  // Check if a file exists by ID
+  static async fileExists(fileId: string): Promise<boolean> {
+    try {
+      const fileRef = doc(db, this.COLLECTION_NAME, fileId);
+      const fileDoc = await getDoc(fileRef);
+      return fileDoc.exists();
+    } catch (error: any) {
+      // Handle permission errors gracefully
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied when checking file existence (this is normal):', error.message);
+        return false;
+      }
+      console.error('Error checking file existence:', error);
+      return false;
+    }
+  }
+
+  // Get a file by ID
+  static async getFileById(fileId: string): Promise<ImportedFile | null> {
+    try {
+      const fileRef = doc(db, this.COLLECTION_NAME, fileId);
+      const fileDoc = await getDoc(fileRef);
+      if (fileDoc.exists()) {
+        return {
+          id: fileDoc.id,
+          ...fileDoc.data()
+        } as ImportedFile;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting file by ID:', error);
+      return null;
+    }
+  }
+
   // Get file statistics for a user
   static async getUserFileStats(userId: string): Promise<{
     totalFiles: number;
@@ -145,6 +180,24 @@ export class ImportedFilesService {
     if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
     
     return date.toLocaleDateString();
+  }
+
+  // Check if we have access to the imported files collection
+  static async canAccessImportedFilesCollection(): Promise<boolean> {
+    try {
+      // Try to read a single document to check collection access
+      const q = query(collection(db, this.COLLECTION_NAME));
+      await getDocs(q);
+      return true;
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+        console.warn('⚠️ No permission to access imported files collection');
+        return false;
+      }
+      // For other errors, assume we have access (they might be network or other issues)
+      console.warn('⚠️ Error checking imported files collection access (assuming access):', error.message);
+      return true;
+    }
   }
 }
 

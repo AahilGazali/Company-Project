@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Dimensions, SafeAreaView } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,9 +105,10 @@ const ProgramScreen = () => {
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Programs</Text>
-      <View style={styles.tableContainer}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Programs</Text>
+        <View style={styles.tableContainer}>
         <View style={styles.tableHeader}>
           <Text style={styles.tableHeaderCell}>Program</Text>
         </View>
@@ -226,11 +227,16 @@ const ProgramScreen = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -241,6 +247,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#1f2937',
+    marginTop: spacing.medium,
     marginBottom: spacing.large,
     textAlign: 'center',
   },
