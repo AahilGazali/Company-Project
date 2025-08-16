@@ -7,13 +7,16 @@ import {
   Pressable,
   Switch,
   Alert,
+  useColorScheme,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import AdminCredentialsModal from "../components/AdminCredentialsModal"
 import { AdminService } from "../services/adminService"
+import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
   fontSize, 
@@ -34,9 +37,9 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>
 
 export default function AdminSettingsScreen() {
   const navigation = useNavigation<NavigationProp>()
+  const { isDarkMode, setDarkMode } = useTheme()
   const [notifications, setNotifications] = useState(true)
   const [autoBackup, setAutoBackup] = useState(true)
-  const [darkMode, setDarkMode] = useState(false)
   const [twoFactor, setTwoFactor] = useState(true)
   const [credentialsModalVisible, setCredentialsModalVisible] = useState(false)
   const [adminEmail, setAdminEmail] = useState("admin@gmail.com")
@@ -134,7 +137,7 @@ export default function AdminSettingsScreen() {
       items: [
         { icon: "notifications", label: "Push Notifications", type: "switch", value: notifications, onValueChange: setNotifications },
         { icon: "cloud-upload", label: "Auto Backup", type: "switch", value: autoBackup, onValueChange: setAutoBackup },
-        { icon: "moon", label: "Dark Mode", type: "switch", value: darkMode, onValueChange: setDarkMode },
+        { icon: "moon", label: "Dark Mode", type: "switch", value: isDarkMode, onValueChange: setDarkMode },
         { icon: "shield-checkmark", label: "Two-Factor Auth", type: "switch", value: twoFactor, onValueChange: setTwoFactor },
       ]
     },
@@ -158,17 +161,62 @@ export default function AdminSettingsScreen() {
     }
   ]
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+    },
+    profileCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    profileName: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    profileEmail: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    sectionContent: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    settingLabel: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    settingIcon: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    settingButton: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    systemInfoCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    infoLabel: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    infoValue: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    sectionTitle: {
+      color: isDarkMode ? "#81C784" : "#2E7D32",
+    },
+    headerSubtitle: {
+      color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.8)",
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
       <View style={styles.header}>
         <LinearGradient
-          colors={["#4CAF50", "#2E7D32", "#1B5E20"]}
+          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Settings</Text>
-            <Text style={styles.headerSubtitle}>System configuration & preferences</Text>
+            <Text style={[styles.headerSubtitle, dynamicStyles.headerSubtitle]}>
+              System configuration & preferences
+            </Text>
           </View>
         </LinearGradient>
       </View>
@@ -179,18 +227,18 @@ export default function AdminSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Summary */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, dynamicStyles.profileCard]}>
           <View style={styles.profileHeader}>
             <View style={styles.profileAvatar}>
               <Text style={styles.profileInitial}>A</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Administrator</Text>
-              <Text style={styles.profileEmail}>{adminEmail}</Text>
+              <Text style={[styles.profileName, dynamicStyles.profileName]}>Administrator</Text>
+              <Text style={[styles.profileEmail, dynamicStyles.profileEmail]}>{adminEmail}</Text>
               <Text style={styles.profileRole}>Super Admin</Text>
             </View>
             <Pressable 
-              style={styles.editButton}
+              style={[styles.editButton, { backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA" }]}
               onPress={() => setCredentialsModalVisible(true)}
             >
               <Ionicons name="create" size={20} color="#4CAF50" />
@@ -201,27 +249,32 @@ export default function AdminSettingsScreen() {
         {/* Settings Sections */}
         {settingsSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.sectionContent}>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{section.title}</Text>
+            <View style={[styles.sectionContent, dynamicStyles.sectionContent]}>
               {section.items.map((item, itemIndex) => (
-                <View key={itemIndex} style={styles.settingItem}>
+                <View key={itemIndex} style={[styles.settingItem, { 
+                  borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0" 
+                }]}>
                   <View style={styles.settingLeft}>
-                    <View style={styles.settingIcon}>
+                    <View style={[styles.settingIcon, dynamicStyles.settingIcon]}>
                       <Ionicons name={item.icon as any} size={20} color="#4CAF50" />
                     </View>
-                    <Text style={styles.settingLabel}>{item.label}</Text>
+                    <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>{item.label}</Text>
                   </View>
                   <View style={styles.settingRight}>
                     {item.type === "switch" && 'value' in item && 'onValueChange' in item ? (
                       <Switch
                         value={item.value}
                         onValueChange={item.onValueChange}
-                        trackColor={{ false: "#E0E0E0", true: "#4CAF50" }}
+                        trackColor={{ 
+                          false: isDarkMode ? "#404040" : "#E0E0E0", 
+                          true: "#4CAF50" 
+                        }}
                         thumbColor="#FFF"
                       />
                     ) : (
                       <Pressable 
-                        style={styles.settingButton}
+                        style={[styles.settingButton, dynamicStyles.settingButton]}
                         onPress={() => {
                           if (section.title === "Security") {
                             handleSecurityAction(item.label)
@@ -230,7 +283,7 @@ export default function AdminSettingsScreen() {
                           }
                         }}
                       >
-                        <Ionicons name="chevron-forward" size={20} color="#999" />
+                        <Ionicons name="chevron-forward" size={20} color={isDarkMode ? "#B0B0B0" : "#999"} />
                       </Pressable>
                     )}
                   </View>
@@ -242,23 +295,23 @@ export default function AdminSettingsScreen() {
 
         {/* System Info */}
         <View style={styles.systemInfoSection}>
-          <Text style={styles.sectionTitle}>System Information</Text>
-          <View style={styles.systemInfoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>App Version</Text>
-              <Text style={styles.infoValue}>1.0.0</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>System Information</Text>
+          <View style={[styles.systemInfoCard, dynamicStyles.systemInfoCard]}>
+            <View style={[styles.infoRow, { borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0" }]}>
+              <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>App Version</Text>
+              <Text style={[styles.infoValue, dynamicStyles.infoValue]}>1.0.0</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Build Number</Text>
-              <Text style={styles.infoValue}>2024.1.15</Text>
+            <View style={[styles.infoRow, { borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0" }]}>
+              <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Build Number</Text>
+              <Text style={[styles.infoValue, dynamicStyles.infoValue]}>2024.1.15</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Last Updated</Text>
-              <Text style={styles.infoValue}>2 days ago</Text>
+            <View style={[styles.infoRow, { borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0" }]}>
+              <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Last Updated</Text>
+              <Text style={[styles.infoValue, dynamicStyles.infoValue]}>2 days ago</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Device</Text>
-              <Text style={styles.infoValue}>React Native</Text>
+            <View style={[styles.infoRow, { borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0" }]}>
+              <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Device</Text>
+              <Text style={[styles.infoValue, dynamicStyles.infoValue]}>React Native</Text>
             </View>
           </View>
         </View>
@@ -275,11 +328,11 @@ export default function AdminSettingsScreen() {
         </Pressable>
       </ScrollView>
 
-             <AdminCredentialsModal
-         visible={credentialsModalVisible}
-         onClose={() => setCredentialsModalVisible(false)}
-         onCredentialsUpdated={handleCredentialsUpdated}
-       />
+      <AdminCredentialsModal
+        visible={credentialsModalVisible}
+        onClose={() => setCredentialsModalVisible(false)}
+        onCredentialsUpdated={handleCredentialsUpdated}
+      />
     </View>
   )
 }

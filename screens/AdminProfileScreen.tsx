@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { AdminService } from "../services/adminService"
+import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
   fontSize, 
@@ -20,6 +21,7 @@ import {
 const { width } = Dimensions.get("window")
 
 export default function AdminProfileScreen() {
+  const { isDarkMode } = useTheme()
   const [adminEmail, setAdminEmail] = useState("admin@gmail.com")
 
   useEffect(() => {
@@ -37,26 +39,34 @@ export default function AdminProfileScreen() {
     }
   }
 
-  const profileStats = [
-    { label: "Total Logins", value: "1,247", icon: "log-in", color: "#4CAF50" },
-    { label: "Last Active", value: "2 hours ago", icon: "time", color: "#2196F3" },
-    { label: "Sessions", value: "89", icon: "desktop", color: "#FF9800" },
-    { label: "Actions", value: "1,023", icon: "flash", color: "#9C27B0" },
-  ]
-
-  const recentActivities = [
-    { action: "User Management", description: "Added new user account", time: "2 minutes ago", icon: "person-add", color: "#4CAF50" },
-    { action: "System Settings", description: "Updated security policies", time: "1 hour ago", icon: "settings", color: "#2196F3" },
-    { action: "Report Generation", description: "Created monthly analytics", time: "3 hours ago", icon: "document-text", color: "#FF9800" },
-    { action: "Database Backup", description: "Completed system backup", time: "1 day ago", icon: "cloud-upload", color: "#9C27B0" },
-  ]
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+    },
+    accountCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    accountRow: {
+      borderBottomColor: isDarkMode ? "#2D2D2D" : "#F0F0F0",
+    },
+    accountLabelText: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    accountValue: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    sectionTitle: {
+      color: isDarkMode ? "#81C784" : "#2E7D32",
+    }
+  }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
       <View style={styles.header}>
         <LinearGradient
-          colors={["#4CAF50", "#2E7D32", "#1B5E20"]}
+          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
@@ -78,125 +88,44 @@ export default function AdminProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Quick Actions */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <Pressable style={styles.actionCard}>
-              <LinearGradient
-                colors={["#4CAF50", "#2E7D32"]}
-                style={styles.actionGradient}
-              >
-                <Ionicons name="create" size={24} color="#FFF" />
-                <Text style={styles.actionText}>Edit Profile</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable style={styles.actionCard}>
-              <LinearGradient
-                colors={["#2196F3", "#1976D2"]}
-                style={styles.actionGradient}
-              >
-                <Ionicons name="shield-checkmark" size={24} color="#FFF" />
-                <Text style={styles.actionText}>Security</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable style={styles.actionCard}>
-              <LinearGradient
-                colors={["#FF9800", "#F57C00"]}
-                style={styles.actionGradient}
-              >
-                <Ionicons name="notifications" size={24} color="#FFF" />
-                <Text style={styles.actionText}>Notifications</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable style={styles.actionCard}>
-              <LinearGradient
-                colors={["#9C27B0", "#7B1FA2"]}
-                style={styles.actionGradient}
-              >
-                <Ionicons name="help-circle" size={24} color="#FFF" />
-                <Text style={styles.actionText}>Help</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Profile Stats */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Profile Statistics</Text>
-          <View style={styles.statsGrid}>
-            {profileStats.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: stat.color }]}>
-                  <Ionicons name={stat.icon as any} size={20} color="#FFF" />
-                </View>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Recent Activities */}
-        <View style={styles.activitiesSection}>
-          <Text style={styles.sectionTitle}>Recent Activities</Text>
-          <View style={styles.activitiesList}>
-            {recentActivities.map((activity, index) => (
-              <View key={index} style={styles.activityCard}>
-                <View style={[styles.activityIcon, { backgroundColor: activity.color }]}>
-                  <Ionicons name={activity.icon as any} size={20} color="#FFF" />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityAction}>{activity.action}</Text>
-                  <Text style={styles.activityDescription}>{activity.description}</Text>
-                  <Text style={styles.activityTime}>{activity.time}</Text>
-                </View>
-                <Pressable style={styles.activityButton}>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        </View>
-
         {/* Account Details */}
         <View style={styles.accountSection}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
-          <View style={styles.accountCard}>
-            <View style={styles.accountRow}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account Details</Text>
+          <View style={[styles.accountCard, dynamicStyles.accountCard]}>
+            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
               <View style={styles.accountLabel}>
                 <Ionicons name="person" size={20} color="#4CAF50" />
-                <Text style={styles.accountLabelText}>Full Name</Text>
+                <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Full Name</Text>
               </View>
-              <Text style={styles.accountValue}>Administrator</Text>
+              <Text style={[styles.accountValue, dynamicStyles.accountValue]}>Administrator</Text>
             </View>
-            <View style={styles.accountRow}>
+            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
               <View style={styles.accountLabel}>
                 <Ionicons name="mail" size={20} color="#4CAF50" />
-                <Text style={styles.accountLabelText}>Email</Text>
+                <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Email</Text>
               </View>
-              <Text style={styles.accountValue}>{adminEmail}</Text>
+              <Text style={[styles.accountValue, dynamicStyles.accountValue]}>{adminEmail}</Text>
             </View>
-            <View style={styles.accountRow}>
+            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
               <View style={styles.accountLabel}>
                 <Ionicons name="shield" size={20} color="#4CAF50" />
-                <Text style={styles.accountLabelText}>Role</Text>
+                <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Role</Text>
               </View>
-              <Text style={styles.accountValue}>Super Administrator</Text>
+              <Text style={[styles.accountValue, dynamicStyles.accountValue]}>Super Administrator</Text>
             </View>
-            <View style={styles.accountRow}>
+            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
               <View style={styles.accountLabel}>
                 <Ionicons name="calendar" size={20} color="#4CAF50" />
-                <Text style={styles.accountLabelText}>Member Since</Text>
+                <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Member Since</Text>
               </View>
-              <Text style={styles.accountValue}>January 2024</Text>
+              <Text style={[styles.accountValue, dynamicStyles.accountValue]}>January 2024</Text>
             </View>
-            <View style={styles.accountRow}>
+            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
               <View style={styles.accountLabel}>
                 <Ionicons name="location" size={20} color="#4CAF50" />
-                <Text style={styles.accountLabelText}>Location</Text>
+                <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Location</Text>
               </View>
-              <Text style={styles.accountValue}>Global</Text>
+              <Text style={[styles.accountValue, dynamicStyles.accountValue]}>Global</Text>
             </View>
           </View>
         </View>

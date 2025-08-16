@@ -4,6 +4,7 @@ import { View, StyleSheet, Platform, Animated } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
   fontSize, 
@@ -29,6 +30,7 @@ const TabBarIcon = ({
   size: number
   focused: boolean
 }) => {
+  const { isDarkMode } = useTheme()
   const scaleValue = React.useRef(new Animated.Value(focused ? 1.2 : 1)).current
   const translateY = React.useRef(new Animated.Value(focused ? -8 : 0)).current
 
@@ -59,7 +61,7 @@ const TabBarIcon = ({
           }
         >
           <LinearGradient
-            colors={["#2E7D32", "#1B5E20", "#0D4A0D"]}
+            colors={isDarkMode ? ["#2E2E2E", "#1A1A1A"] : ["#2E7D32", "#1B5E20", "#0D4A0D"]}
             style={styles.activeIconBackground}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -85,6 +87,7 @@ const TabBarIcon = ({
 export default function AdminTabs() {
   const insets = useSafeAreaInsets()
   const safeArea = getSafeAreaPadding()
+  const { isDarkMode } = useTheme()
 
   return (
     <Tab.Navigator
@@ -98,77 +101,32 @@ export default function AdminTabs() {
           else if (route.name === "Settings") iconName = focused ? "settings" : "settings-outline"
           else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
-          return <TabBarIcon 
-            name={iconName} 
-            color={color} 
-            size={getIconSize(focused ? 22 : 18)} 
-            focused={focused} 
-          />
+          return <TabBarIcon name={iconName} color={color} size={size} focused={focused} />
         },
-        tabBarActiveTintColor: "#2E7D32",
-        tabBarInactiveTintColor: "#6B7280",
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            paddingBottom: Math.max(insets.bottom, safeArea.bottom),
-            height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80) + Math.max(insets.bottom, 0),
-          }
-        ],
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarItemStyle: styles.tabBarItem,
-        tabBarLabelPosition: "below-icon",
+        tabBarActiveTintColor: "#4CAF50",
+        tabBarInactiveTintColor: isDarkMode ? "#B0B0B0" : "#666",
+        tabBarStyle: {
+          backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+          borderTopColor: isDarkMode ? "#2D2D2D" : "#E0E0E0",
+          borderTopWidth: 1,
+          height: 60 + safeArea.bottom,
+          paddingBottom: safeArea.bottom,
+          paddingTop: 8,
+          ...getShadow(8),
+        },
+        tabBarLabelStyle: {
+          fontSize: fontSize.tiny,
+          fontWeight: "600",
+          marginTop: 4,
+        },
         headerShown: false,
-        tabBarShowLabel: true,
-        tabBarHideOnKeyboard: true,
-        tabBarBackground: () => (
-          <View style={styles.tabBarBackground}>
-            <LinearGradient
-              colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
-              style={styles.tabBarGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-            />
-            <BlurView intensity={20} style={styles.tabBarBlur} />
-            <View style={styles.tabBarBorder} />
-          </View>
-        ),
       })}
     >
-      <Tab.Screen 
-        name="Dashboard" 
-        component={AdminDashboardScreen}
-        options={{
-          title: "Dashboard",
-        }}
-      />
-      <Tab.Screen 
-        name="Users" 
-        component={AdminUsersScreen}
-        options={{
-          title: "Users",
-        }}
-      />
-      <Tab.Screen 
-        name="Analytics" 
-        component={AdminAnalyticsScreen}
-        options={{
-          title: "Analytics",
-        }}
-      />
-      <Tab.Screen 
-        name="Settings" 
-        component={AdminSettingsScreen}
-        options={{
-          title: "Settings",
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={AdminProfileScreen}
-        options={{
-          title: "Profile",
-        }}
-      />
+      <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
+      <Tab.Screen name="Users" component={AdminUsersScreen} />
+      <Tab.Screen name="Analytics" component={AdminAnalyticsScreen} />
+      <Tab.Screen name="Settings" component={AdminSettingsScreen} />
+      <Tab.Screen name="Profile" component={AdminProfileScreen} />
     </Tab.Navigator>
   )
 }

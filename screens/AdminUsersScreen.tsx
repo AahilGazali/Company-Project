@@ -14,7 +14,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { db } from "../firebaseConfig"
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore"
+import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
   fontSize, 
@@ -35,6 +36,7 @@ interface User {
 }
 
 export default function AdminUsersScreen() {
+  const { isDarkMode } = useTheme()
   const [searchQuery, setSearchQuery] = useState("")
   const [addUserModalVisible, setAddUserModalVisible] = useState(false)
   const [isAddingUser, setIsAddingUser] = useState(false)
@@ -169,17 +171,133 @@ export default function AdminUsersScreen() {
     resetForm()
   }
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+    },
+    searchInputContainer: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    searchInput: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    userCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    userName: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    userEmail: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    lastLogin: {
+      color: isDarkMode ? "#B0B0B0" : "#999",
+    },
+    actionButton: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    statCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    statLabel: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    noUsersText: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    modalContent: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    modalHeaderColors: isDarkMode ? ["#2E2E2E", "#1A1A1A"] as const : ["#4CAF50", "#2E7D32"] as const,
+    inputLabel: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    modalInput: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      color: isDarkMode ? "#FFFFFF" : "#333",
+      borderColor: isDarkMode ? "#404040" : "#E0E0E0",
+    },
+    cancelButton: {
+      borderColor: isDarkMode ? "#404040" : "#E0E0E0",
+    },
+    cancelButtonText: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    Alert.alert(
+      "Confirm Deletion",
+      "Are you sure you want to delete this user?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "users", userId));
+              Alert.alert("Success", "User deleted successfully!");
+              fetchUsers(); // Refresh the users list
+            } catch (error) {
+              console.error("Error deleting user:", error);
+              Alert.alert("Error", "Failed to delete user. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleUserStatus = async (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+    const action = newStatus === "Active" ? "activate" : "deactivate";
+    
+    Alert.alert(
+      `Confirm ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+      `Are you sure you want to ${action} this user?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: action.charAt(0).toUpperCase() + action.slice(1),
+          style: newStatus === "Active" ? "default" : "destructive",
+          onPress: async () => {
+            try {
+              await updateDoc(doc(db, "users", userId), {
+                status: newStatus
+              });
+              Alert.alert("Success", `User ${action}d successfully!`);
+              fetchUsers(); // Refresh the users list
+            } catch (error) {
+              console.error(`Error ${action}ing user:`, error);
+              Alert.alert("Error", `Failed to ${action} user. Please try again.`);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
       <View style={styles.header}>
         <LinearGradient
-          colors={["#4CAF50", "#2E7D32", "#1B5E20"]}
+          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>User Management</Text>
-            <Text style={styles.headerSubtitle}>Manage system users and permissions</Text>
+            <Text style={[styles.headerSubtitle, { 
+              color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.8)" 
+            }]}>Manage system users and permissions</Text>
             <Pressable style={styles.refreshButton} onPress={onRefresh}>
               <Ionicons name="refresh" size={24} color="#FFF" />
             </Pressable>
@@ -197,14 +315,14 @@ export default function AdminUsersScreen() {
       >
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <View style={[styles.searchInputContainer, dynamicStyles.searchInputContainer]}>
+            <Ionicons name="search" size={20} color={isDarkMode ? "#B0B0B0" : "#666"} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, dynamicStyles.searchInput]}
               placeholder="Search users..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#999"
+              placeholderTextColor={isDarkMode ? "#666" : "#999"}
             />
           </View>
           <Pressable style={styles.addButton} onPress={openAddUserModal}>
@@ -223,37 +341,55 @@ export default function AdminUsersScreen() {
           {isLoadingUsers ? (
             <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: spacing.large }} />
           ) : filteredUsers.length === 0 ? (
-            <Text style={styles.noUsersText}>No users found.</Text>
+            <Text style={[styles.noUsersText, dynamicStyles.noUsersText]}>No users found.</Text>
           ) : (
             filteredUsers.map((user) => (
-              <View key={user.id} style={styles.userCard}>
+              <View key={user.id} style={[styles.userCard, dynamicStyles.userCard]}>
                 <View style={styles.userInfo}>
                   <View style={styles.userAvatar}>
                     <Text style={styles.userInitial}>{user.fullName.charAt(0)}</Text>
                   </View>
                   <View style={styles.userDetails}>
-                    <Text style={styles.userName}>{user.fullName}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
+                    <Text style={[styles.userName, dynamicStyles.userName]}>{user.fullName}</Text>
+                    <Text style={[styles.userEmail, dynamicStyles.userEmail]}>{user.email}</Text>
                     <View style={styles.userMeta}>
                       <View style={[styles.roleBadge, { backgroundColor: user.role === 'Admin' ? '#FF5722' : user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
                         <Text style={styles.roleText}>{user.role}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#9E9E9E' }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
                         <Text style={styles.statusText}>{user.status}</Text>
                       </View>
                     </View>
                   </View>
                 </View>
                 <View style={styles.userActions}>
-                  <Text style={styles.lastLogin}>Last: {user.lastLogin || "Never"}</Text>
+                  <Text style={[styles.lastLogin, dynamicStyles.lastLogin]}>Last: {user.lastLogin || "Never"}</Text>
                   <View style={styles.actionButtons}>
-                    <Pressable style={styles.actionButton}>
+                    <Pressable 
+                      style={[styles.actionButton, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}
+                      onPress={() => toggleUserStatus(user.id, user.status)}
+                    >
+                      <Ionicons 
+                        name={user.status === 'Active' ? 'checkmark-circle' : 'close-circle'} 
+                        size={18} 
+                        color="#FFF" 
+                      />
+                    </Pressable>
+                    <Pressable style={[styles.actionButton, dynamicStyles.actionButton]}>
                       <Ionicons name="create" size={18} color="#2196F3" />
                     </Pressable>
-                    <Pressable style={styles.actionButton}>
+                    <Pressable style={[styles.actionButton, dynamicStyles.actionButton]} onPress={() => handleDeleteUser(user.id)}>
                       <Ionicons name="trash" size={18} color="#F44336" />
                     </Pressable>
                   </View>
+                  <Text style={[styles.actionHint, { 
+                    color: isDarkMode ? "#666" : "#999",
+                    textAlign: "center",
+                    marginTop: spacing.tiny,
+                    fontSize: fontSize.tiny
+                  }]}>
+                    {user.status === 'Active' ? 'Click to deactivate' : 'Click to activate'} • Edit • Delete
+                  </Text>
                 </View>
               </View>
             ))
@@ -262,17 +398,17 @@ export default function AdminUsersScreen() {
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, dynamicStyles.statCard]}>
             <Text style={styles.statNumber}>{users.length}</Text>
-            <Text style={styles.statLabel}>Total Users</Text>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Total Users</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, dynamicStyles.statCard]}>
             <Text style={styles.statNumber}>{users.filter(u => u.status === 'Active').length}</Text>
-            <Text style={styles.statLabel}>Active Users</Text>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Active Users</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, dynamicStyles.statCard]}>
             <Text style={styles.statNumber}>{users.filter(u => u.role === 'Admin').length}</Text>
-            <Text style={styles.statLabel}>Admins</Text>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Admins</Text>
           </View>
         </View>
       </ScrollView>
@@ -285,9 +421,9 @@ export default function AdminUsersScreen() {
         onRequestClose={() => setAddUserModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
             <LinearGradient
-              colors={['#4CAF50', '#2E7D32']}
+              colors={dynamicStyles.modalHeaderColors}
               style={styles.modalHeader}
             >
               <Text style={styles.modalTitle}>Add New User</Text>
@@ -302,42 +438,46 @@ export default function AdminUsersScreen() {
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.formRow}>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Full Name</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Full Name</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
                     value={formData.fullName}
                     onChangeText={(text) => setFormData({...formData, fullName: text})}
                     placeholder="Enter full name"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
                 </View>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Project Name</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Project Name</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
                     value={formData.projectName}
                     onChangeText={(text) => setFormData({...formData, projectName: text})}
                     placeholder="Enter project name"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
                 </View>
               </View>
 
               <View style={styles.formRow}>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Employee ID</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Employee ID</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
                     value={formData.employeeId}
                     onChangeText={(text) => setFormData({...formData, employeeId: text})}
                     placeholder="Enter employee ID"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
                 </View>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Email</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Email</Text>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[styles.modalInput, dynamicStyles.modalInput]}
                       value={formData.email}
                       onChangeText={(text) => setFormData({...formData, email: text})}
                       placeholder="Enter email"
+                      placeholderTextColor={isDarkMode ? "#666" : "#999"}
                       keyboardType="email-address"
                       autoCapitalize="none"
                     />
@@ -346,22 +486,24 @@ export default function AdminUsersScreen() {
 
               <View style={styles.formRow}>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Create Password</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Create Password</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
                     value={formData.password}
                     onChangeText={(text) => setFormData({...formData, password: text})}
                     placeholder="Enter password"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
                     secureTextEntry
                   />
                 </View>
                 <View style={styles.formColumn}>
-                  <Text style={styles.inputLabel}>Confirm Password</Text>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Confirm Password</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
                     value={formData.confirmPassword}
                     onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
                     placeholder="Confirm password"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
                     secureTextEntry
                   />
                 </View>
@@ -369,10 +511,10 @@ export default function AdminUsersScreen() {
 
               <View style={styles.modalButtons}>
                 <Pressable 
-                  style={styles.cancelButton}
+                  style={[styles.cancelButton, dynamicStyles.cancelButton]}
                   onPress={() => setAddUserModalVisible(false)}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Cancel</Text>
                 </Pressable>
                 <Pressable 
                   style={styles.addUserButton}
@@ -560,7 +702,11 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: spacing.small,
+    marginTop: spacing.small,
+    marginBottom: spacing.tiny,
   },
   actionButton: {
     width: 36,
@@ -569,6 +715,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  actionHint: {
+    fontSize: fontSize.tiny,
+    color: "#999",
+    marginTop: spacing.tiny,
+    textAlign: "right",
   },
   statsContainer: {
     flexDirection: "row",

@@ -9,20 +9,18 @@ import AdminTabs from './screens/AdminTabs'; // Import Admin tabs
 import AdminLoginScreen from './screens/AdminLoginScreen'; // Import Admin Login screen
 import { initializeAdminCredentials } from './utils/initializeAdmin';
 import { UserProvider } from './contexts/UserContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
-  useEffect(() => {
-    // Initialize admin credentials when app starts
-    initializeAdminCredentials();
-  }, []);
+function AppContent() {
+  const { isDarkMode } = useTheme();
 
   return (
-    <UserProvider>
+    <>
       <StatusBar 
-        barStyle={Platform.OS === 'ios' ? 'light-content' : 'dark-content'} 
-        backgroundColor={Platform.OS === 'android' ? '#2E7D32' : undefined}
+        barStyle={isDarkMode ? 'light-content' : (Platform.OS === 'ios' ? 'light-content' : 'dark-content')}
+        backgroundColor={Platform.OS === 'android' ? (isDarkMode ? '#121212' : '#2E7D32') : undefined}
         translucent={Platform.OS === 'android'}
       />
       <NavigationContainer>
@@ -56,6 +54,21 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
-    </UserProvider>
+    </>
+  );
+}
+
+export default function App() {
+  useEffect(() => {
+    // Initialize admin credentials when app starts
+    initializeAdminCredentials();
+  }, []);
+
+  return (
+    <ThemeProvider>
+      <UserProvider>
+        <AppContent />
+      </UserProvider>
+    </ThemeProvider>
   );
 }
