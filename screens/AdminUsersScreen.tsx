@@ -37,15 +37,22 @@ interface User {
 
 export default function AdminUsersScreen() {
   const { isDarkMode } = useTheme()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [addUserModalVisible, setAddUserModalVisible] = useState(false)
-  const [isAddingUser, setIsAddingUser] = useState(false)
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [addUserModalVisible, setAddUserModalVisible] = useState<boolean>(false)
+  const [isAddingUser, setIsAddingUser] = useState<boolean>(false)
   const [users, setUsers] = useState<User[]>([])
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true)
+  const [refreshing, setRefreshing] = useState<boolean>(false)
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    fullName: string
+    projectName: string
+    employeeId: string
+    email: string
+    password: string
+    confirmPassword: string
+  }>({
     fullName: "",
     projectName: "",
     employeeId: "",
@@ -80,73 +87,177 @@ export default function AdminUsersScreen() {
       setUsers(fetchedUsers)
     } catch (error) {
       console.error("Error fetching users:", error)
-      Alert.alert("Error", "Failed to fetch users")
+      Alert.alert("Error", "Failed to fetch users. Please try again.")
     } finally {
       setIsLoadingUsers(false)
     }
   }
 
   const onRefresh = async () => {
-    setRefreshing(true)
-    await fetchUsers()
-    setRefreshing(false)
+    try {
+      setRefreshing(true)
+      await fetchUsers()
+    } catch (error) {
+      console.error("Error refreshing users:", error)
+      Alert.alert("Error", "Failed to refresh users. Please try again.")
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   useEffect(() => {
-    fetchUsers()
+    const loadUsers = async () => {
+      try {
+        await fetchUsers()
+      } catch (error) {
+        console.error("Error loading users on mount:", error)
+        Alert.alert("Error", "Failed to load users. Please restart the app.")
+      }
+    }
+    
+    loadUsers()
   }, [])
 
-  const filteredUsers = users.filter(user => 
-    user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.employeeId.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchQuery.toLowerCase().trim()
+    
+    if (!searchLower) return true
+    
+    return (
+      (user.fullName && typeof user.fullName === 'string' && user.fullName.toLowerCase().includes(searchLower)) ||
+      (user.email && typeof user.email === 'string' && user.email.toLowerCase().includes(searchLower)) ||
+      (user.projectName && typeof user.projectName === 'string' && user.projectName.toLowerCase().includes(searchLower)) ||
+      (user.employeeId && typeof user.employeeId === 'string' && user.employeeId.toLowerCase().includes(searchLower))
+    )
+  })
+
+  const formatLastLogin = (lastLogin: any) => {
+    if (!lastLogin) return "Never"
+    
+    try {
+      // Handle Firestore timestamp
+      if (lastLogin.toDate && typeof lastLogin.toDate === 'function') {
+        const date = lastLogin.toDate()
+        if (!(date instanceof Date) || isNaN(date.getTime())) {
+          return "Invalid date"
+        }
+        
+        const now = new Date()
+        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+        
+        if (diffInMinutes < 1) return "Just now"
+        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+        
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+        
+        const diffInDays = Math.floor(diffInHours / 24)
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+      } 
+      // Handle timestamp object with seconds
+      else if (lastLogin.seconds && typeof lastLogin.seconds === 'number') {
+        const date = new Date(lastLogin.seconds * 1000)
+        if (isNaN(date.getTime())) {
+          return "Invalid date"
+        }
+        
+        const now = new Date()
+        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+        
+        if (diffInMinutes < 1) return "Just now"
+        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+        
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+        
+        const diffInDays = Math.floor(diffInHours / 24)
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+      } 
+      // Handle regular Date object
+      else if (lastLogin instanceof Date) {
+        if (isNaN(lastLogin.getTime())) {
+          return "Invalid date"
+        }
+        
+        const now = new Date()
+        const diffInMinutes = Math.floor((now.getTime() - lastLogin.getTime()) / (1000 * 60))
+        
+        if (diffInMinutes < 1) return "Just now"
+        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+        
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+        
+        const diffInDays = Math.floor(diffInHours / 24)
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+      } 
+      // Handle string dates
+      else if (typeof lastLogin === 'string') {
+        const date = new Date(lastLogin)
+        if (isNaN(date.getTime())) {
+          return "Invalid date"
+        }
+        
+        const now = new Date()
+        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+        
+        if (diffInMinutes < 1) return "Just now"
+        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+        
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+        
+        const diffInDays = Math.floor(diffInHours / 24)
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+      } 
+      else {
+        console.warn("Unknown lastLogin format:", lastLogin)
+        return "Unknown"
+      }
+    } catch (error) {
+      console.error("Error formatting lastLogin:", error, "Value:", lastLogin)
+      return "Error"
+    }
+  }
 
   const handleAddUser = async () => {
-    // Validation
-    if (!formData.fullName || !formData.projectName || !formData.employeeId || !formData.email || !formData.password || !formData.confirmPassword) {
-      Alert.alert("Error", "All fields are required")
+    // Validate form data
+    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+      Alert.alert("Error", "Please fill in all required fields")
       return
     }
-
+    
     if (formData.password !== formData.confirmPassword) {
       Alert.alert("Error", "Passwords do not match")
       return
     }
-
+    
     if (formData.password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters long")
       return
     }
-
-    setIsAddingUser(true)
+    
     try {
-      // Save to Firebase
+      setIsAddingUser(true)
+      
       const userData = {
-        fullName: formData.fullName,
-        projectName: formData.projectName,
-        employeeId: formData.employeeId,
-        email: formData.email,
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        projectName: formData.projectName.trim(),
+        employeeId: formData.employeeId.trim(),
         password: formData.password,
         role: "User",
         status: "Active",
-        createdAt: serverTimestamp(),
-        lastLogin: null
+        lastLogin: null,
+        createdAt: serverTimestamp()
       }
-
+      
       await addDoc(collection(db, "users"), userData)
       
-      Alert.alert("Success", "User added successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setAddUserModalVisible(false)
-            resetForm()
-            fetchUsers() // Refresh the users list
-          }
-        }
-      ])
+      Alert.alert("Success", "User added successfully!")
+      setAddUserModalVisible(false)
+      resetForm()
+      fetchUsers() // Refresh the users list
     } catch (error) {
       console.error("Error adding user:", error)
       Alert.alert("Error", "Failed to add user. Please try again.")
@@ -156,19 +267,37 @@ export default function AdminUsersScreen() {
   }
 
   const resetForm = () => {
-    setFormData({
-      fullName: "",
-      projectName: "",
-      employeeId: "",
-      email: "",
-      password: "",
-      confirmPassword: ""
-    })
+    try {
+      setFormData({
+        fullName: "",
+        projectName: "",
+        employeeId: "",
+        email: "",
+        password: "",
+        confirmPassword: ""
+      })
+    } catch (error) {
+      console.error("Error resetting form:", error)
+      // Fallback reset
+      setFormData({
+        fullName: "",
+        projectName: "",
+        employeeId: "",
+        email: "",
+        password: "",
+        confirmPassword: ""
+      })
+    }
   }
 
   const openAddUserModal = () => {
-    setAddUserModalVisible(true)
-    resetForm()
+    try {
+      setAddUserModalVisible(true)
+      resetForm()
+    } catch (error) {
+      console.error("Error opening add user modal:", error)
+      Alert.alert("Error", "Failed to open add user modal. Please try again.")
+    }
   }
 
   // Dynamic styles based on dark mode
@@ -227,63 +356,69 @@ export default function AdminUsersScreen() {
   }
 
   const handleDeleteUser = async (userId: string) => {
+    if (!userId || typeof userId !== 'string') {
+      Alert.alert("Error", "Invalid user ID")
+      return
+    }
+    
     Alert.alert(
-      "Confirm Deletion",
-      "Are you sure you want to delete this user?",
+      "Confirm Delete",
+      "Are you sure you want to permanently delete this user? This action cannot be undone.",
       [
         {
           text: "Cancel",
-          style: "cancel",
+          style: "cancel"
         },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, "users", userId));
-              Alert.alert("Success", "User deleted successfully!");
-              fetchUsers(); // Refresh the users list
+              await deleteDoc(doc(db, "users", userId))
+              await fetchUsers() // Refresh the list
             } catch (error) {
-              console.error("Error deleting user:", error);
-              Alert.alert("Error", "Failed to delete user. Please try again.");
+              console.error("Error deleting user:", error)
+              Alert.alert("Error", "Failed to delete user. Please try again.")
             }
-          },
-        },
+          }
+        }
       ]
-    );
-  };
+    )
+  }
 
   const toggleUserStatus = async (userId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
-    const action = newStatus === "Active" ? "activate" : "deactivate";
+    if (!userId || typeof userId !== 'string') {
+      Alert.alert("Error", "Invalid user ID")
+      return
+    }
+    
+    const newStatus = currentStatus === "Active" ? "Inactive" : "Active"
+    const action = currentStatus === "Active" ? "deactivate" : "activate"
     
     Alert.alert(
-      `Confirm ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+      `Confirm ${action}`,
       `Are you sure you want to ${action} this user?`,
       [
         {
           text: "Cancel",
-          style: "cancel",
+          style: "cancel"
         },
         {
-          text: action.charAt(0).toUpperCase() + action.slice(1),
-          style: newStatus === "Active" ? "default" : "destructive",
+          text: action === "deactivate" ? "Deactivate" : "Activate",
+          style: action === "deactivate" ? "destructive" : "default",
           onPress: async () => {
             try {
-              await updateDoc(doc(db, "users", userId), {
-                status: newStatus
-              });
-              Alert.alert("Success", `User ${action}d successfully!`);
-              fetchUsers(); // Refresh the users list
+              await updateDoc(doc(db, "users", userId), { status: newStatus })
+              await fetchUsers() // Refresh the list
             } catch (error) {
-              console.error(`Error ${action}ing user:`, error);
-              Alert.alert("Error", `Failed to ${action} user. Please try again.`);
+              console.error(`Error ${action}ing user:`, error)
+              Alert.alert("Error", `Failed to ${action} user. Please try again.`)
             }
-          },
-        },
+          }
+        }
       ]
-    );
-  };
+    )
+  }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
@@ -298,7 +433,14 @@ export default function AdminUsersScreen() {
             <Text style={[styles.headerSubtitle, { 
               color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.8)" 
             }]}>Manage system users and permissions</Text>
-            <Pressable style={styles.refreshButton} onPress={onRefresh}>
+            <Pressable style={styles.refreshButton} onPress={() => {
+              try {
+                onRefresh()
+              } catch (error) {
+                console.error("Error refreshing:", error)
+                Alert.alert("Error", "Failed to refresh. Please try again.")
+              }
+            }}>
               <Ionicons name="refresh" size={24} color="#FFF" />
             </Pressable>
           </View>
@@ -320,12 +462,26 @@ export default function AdminUsersScreen() {
             <TextInput
               style={[styles.searchInput, dynamicStyles.searchInput]}
               placeholder="Search users..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={searchQuery || ""}
+              onChangeText={(text) => {
+                try {
+                  setSearchQuery(text || "")
+                } catch (error) {
+                  console.error("Error updating search query:", error)
+                  setSearchQuery("")
+                }
+              }}
               placeholderTextColor={isDarkMode ? "#666" : "#999"}
             />
           </View>
-          <Pressable style={styles.addButton} onPress={openAddUserModal}>
+          <Pressable style={styles.addButton} onPress={() => {
+            try {
+              openAddUserModal()
+            } catch (error) {
+              console.error("Error opening add user modal:", error)
+              Alert.alert("Error", "Failed to open add user modal. Please try again.")
+            }
+          }}>
             <LinearGradient
               colors={["#4CAF50", "#2E7D32"]}
               style={styles.addButtonGradient}
@@ -340,74 +496,94 @@ export default function AdminUsersScreen() {
         <View style={styles.usersContainer}>
           {isLoadingUsers ? (
             <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: spacing.large }} />
-          ) : filteredUsers.length === 0 ? (
-            <Text style={[styles.noUsersText, dynamicStyles.noUsersText]}>No users found.</Text>
+          ) : !filteredUsers || filteredUsers.length === 0 ? (
+            <Text style={[styles.noUsersText, dynamicStyles.noUsersText]}>
+              {searchQuery ? "No users found matching your search." : "No users found."}
+            </Text>
           ) : (
-            filteredUsers.map((user) => (
-              <View key={user.id} style={[styles.userCard, dynamicStyles.userCard]}>
-                <View style={styles.userInfo}>
-                  <View style={styles.userAvatar}>
-                    <Text style={styles.userInitial}>{user.fullName.charAt(0)}</Text>
-                  </View>
-                  <View style={styles.userDetails}>
-                    <Text style={[styles.userName, dynamicStyles.userName]}>{user.fullName}</Text>
-                    <Text style={[styles.userEmail, dynamicStyles.userEmail]}>{user.email}</Text>
-                    <View style={styles.userMeta}>
-                      <View style={[styles.roleBadge, { backgroundColor: user.role === 'Admin' ? '#FF5722' : user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
-                        <Text style={styles.roleText}>{user.role}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
-                        <Text style={styles.statusText}>{user.status}</Text>
+            filteredUsers.map((user) => {
+              if (!user || !user.id) {
+                return null // Skip invalid users
+              }
+              
+              return (
+                <View key={user.id} style={[styles.userCard, dynamicStyles.userCard]}>
+                  <View style={styles.userInfo}>
+                    <View style={styles.userAvatar}>
+                      <Text style={styles.userInitial}>
+                        {user.fullName && typeof user.fullName === 'string' && user.fullName.length > 0 
+                          ? user.fullName.charAt(0).toUpperCase() 
+                          : '?'}
+                      </Text>
+                    </View>
+                    <View style={styles.userDetails}>
+                      <Text style={[styles.userName, dynamicStyles.userName]}>
+                        {user.fullName && typeof user.fullName === 'string' ? user.fullName : 'Unknown User'}
+                      </Text>
+                      <Text style={[styles.userEmail, dynamicStyles.userEmail]}>
+                        {user.email && typeof user.email === 'string' ? user.email : 'No email'}
+                      </Text>
+                      <View style={styles.userMeta}>
+                        <View style={[styles.roleBadge, { backgroundColor: user.role === 'Admin' ? '#FF5722' : user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
+                          <Text style={styles.roleText}>{user.role || 'User'}</Text>
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
+                          <Text style={styles.statusText}>{user.status || 'Active'}</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </View>
-                <View style={styles.userActions}>
-                  <Text style={[styles.lastLogin, dynamicStyles.lastLogin]}>Last: {user.lastLogin || "Never"}</Text>
-                  <View style={styles.actionButtons}>
-                    <Pressable 
-                      style={[styles.actionButton, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}
-                      onPress={() => toggleUserStatus(user.id, user.status)}
-                    >
-                      <Ionicons 
-                        name={user.status === 'Active' ? 'checkmark-circle' : 'close-circle'} 
-                        size={18} 
-                        color="#FFF" 
-                      />
-                    </Pressable>
-                    <Pressable style={[styles.actionButton, dynamicStyles.actionButton]}>
-                      <Ionicons name="create" size={18} color="#2196F3" />
-                    </Pressable>
-                    <Pressable style={[styles.actionButton, dynamicStyles.actionButton]} onPress={() => handleDeleteUser(user.id)}>
-                      <Ionicons name="trash" size={18} color="#F44336" />
-                    </Pressable>
+                  <View style={styles.userActions}>
+                    <Text style={[styles.lastLogin, dynamicStyles.lastLogin]}>Last: {formatLastLogin(user.lastLogin)}</Text>
+                    <View style={styles.actionButtons}>
+                      <Pressable 
+                        style={[styles.actionButton, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}
+                        onPress={() => toggleUserStatus(user.id, user.status)}
+                      >
+                        <Ionicons 
+                          name={user.status === 'Active' ? 'checkmark-circle' : 'close-circle'} 
+                          size={18} 
+                          color="#FFF" 
+                        />
+                      </Pressable>
+                      <Pressable style={[styles.actionButton, dynamicStyles.actionButton]}>
+                        <Ionicons name="create" size={18} color="#2196F3" />
+                      </Pressable>
+                      <Pressable style={[styles.actionButton, dynamicStyles.actionButton]} onPress={() => handleDeleteUser(user.id)}>
+                        <Ionicons name="trash" size={18} color="#F44336" />
+                      </Pressable>
+                    </View>
+                    <Text style={[styles.actionHint, { 
+                      color: isDarkMode ? "#666" : "#999",
+                      textAlign: "center",
+                      marginTop: spacing.tiny,
+                      fontSize: fontSize.tiny
+                    }]}>
+                      {user.status === 'Active' ? 'Click to deactivate' : 'Click to activate'} • Edit • Delete
+                    </Text>
                   </View>
-                  <Text style={[styles.actionHint, { 
-                    color: isDarkMode ? "#666" : "#999",
-                    textAlign: "center",
-                    marginTop: spacing.tiny,
-                    fontSize: fontSize.tiny
-                  }]}>
-                    {user.status === 'Active' ? 'Click to deactivate' : 'Click to activate'} • Edit • Delete
-                  </Text>
                 </View>
-              </View>
-            ))
+              )
+            }).filter(Boolean) // Remove null entries
           )}
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, dynamicStyles.statCard]}>
-            <Text style={styles.statNumber}>{users.length}</Text>
+            <Text style={styles.statNumber}>{Array.isArray(users) ? users.length : 0}</Text>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Total Users</Text>
           </View>
           <View style={[styles.statCard, dynamicStyles.statCard]}>
-            <Text style={styles.statNumber}>{users.filter(u => u.status === 'Active').length}</Text>
+            <Text style={styles.statNumber}>
+              {Array.isArray(users) ? users.filter(u => u && u.status === 'Active').length : 0}
+            </Text>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Active Users</Text>
           </View>
           <View style={[styles.statCard, dynamicStyles.statCard]}>
-            <Text style={styles.statNumber}>{users.filter(u => u.role === 'Admin').length}</Text>
+            <Text style={styles.statNumber}>
+              {Array.isArray(users) ? users.filter(u => u && u.role === 'Admin').length : 0}
+            </Text>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Admins</Text>
           </View>
         </View>
@@ -441,8 +617,14 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Full Name</Text>
                   <TextInput
                     style={[styles.modalInput, dynamicStyles.modalInput]}
-                    value={formData.fullName}
-                    onChangeText={(text) => setFormData({...formData, fullName: text})}
+                    value={formData.fullName || ""}
+                    onChangeText={(text) => {
+                      try {
+                        setFormData({...formData, fullName: text || ""})
+                      } catch (error) {
+                        console.error("Error updating fullName:", error)
+                      }
+                    }}
                     placeholder="Enter full name"
                     placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
@@ -451,8 +633,8 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Project Name</Text>
                   <TextInput
                     style={[styles.modalInput, dynamicStyles.modalInput]}
-                    value={formData.projectName}
-                    onChangeText={(text) => setFormData({...formData, projectName: text})}
+                    value={formData.projectName || ""}
+                    onChangeText={(text) => setFormData({...formData, projectName: text || ""})}
                     placeholder="Enter project name"
                     placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
@@ -464,8 +646,8 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Employee ID</Text>
                   <TextInput
                     style={[styles.modalInput, dynamicStyles.modalInput]}
-                    value={formData.employeeId}
-                    onChangeText={(text) => setFormData({...formData, employeeId: text})}
+                    value={formData.employeeId || ""}
+                    onChangeText={(text) => setFormData({...formData, employeeId: text || ""})}
                     placeholder="Enter employee ID"
                     placeholderTextColor={isDarkMode ? "#666" : "#999"}
                   />
@@ -474,8 +656,8 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Email</Text>
                     <TextInput
                       style={[styles.modalInput, dynamicStyles.modalInput]}
-                      value={formData.email}
-                      onChangeText={(text) => setFormData({...formData, email: text})}
+                      value={formData.email || ""}
+                      onChangeText={(text) => setFormData({...formData, email: text || ""})}
                       placeholder="Enter email"
                       placeholderTextColor={isDarkMode ? "#666" : "#999"}
                       keyboardType="email-address"
@@ -489,8 +671,8 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Create Password</Text>
                   <TextInput
                     style={[styles.modalInput, dynamicStyles.modalInput]}
-                    value={formData.password}
-                    onChangeText={(text) => setFormData({...formData, password: text})}
+                    value={formData.password || ""}
+                    onChangeText={(text) => setFormData({...formData, password: text || ""})}
                     placeholder="Enter password"
                     placeholderTextColor={isDarkMode ? "#666" : "#999"}
                     secureTextEntry
@@ -500,8 +682,8 @@ export default function AdminUsersScreen() {
                   <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Confirm Password</Text>
                   <TextInput
                     style={[styles.modalInput, dynamicStyles.modalInput]}
-                    value={formData.confirmPassword}
-                    onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                    value={formData.confirmPassword || ""}
+                    onChangeText={(text) => setFormData({...formData, confirmPassword: text || ""})}
                     placeholder="Confirm password"
                     placeholderTextColor={isDarkMode ? "#666" : "#999"}
                     secureTextEntry
@@ -512,13 +694,27 @@ export default function AdminUsersScreen() {
               <View style={styles.modalButtons}>
                 <Pressable 
                   style={[styles.cancelButton, dynamicStyles.cancelButton]}
-                  onPress={() => setAddUserModalVisible(false)}
+                  onPress={() => {
+                    try {
+                      setAddUserModalVisible(false)
+                    } catch (error) {
+                      console.error("Error closing modal:", error)
+                      setAddUserModalVisible(false) // Force close
+                    }
+                  }}
                 >
                   <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Cancel</Text>
                 </Pressable>
                 <Pressable 
                   style={styles.addUserButton}
-                  onPress={handleAddUser}
+                  onPress={() => {
+                    try {
+                      handleAddUser()
+                    } catch (error) {
+                      console.error("Error handling add user:", error)
+                      Alert.alert("Error", "Failed to add user. Please try again.")
+                    }
+                  }}
                   disabled={isAddingUser}
                 >
                   <LinearGradient
