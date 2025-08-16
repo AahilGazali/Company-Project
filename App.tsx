@@ -5,6 +5,8 @@ import { StatusBar, Platform } from 'react-native';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeTabs'; // Import Home screen
+import AdminTabs from './screens/AdminTabs'; // Import Admin tabs
+import AdminLoginScreen from './screens/AdminLoginScreen'; // Import Admin Login screen
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +38,14 @@ export default function App() {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
+          />
+          <Stack.Screen
+            name="AdminLogin"
+            component={AdminLoginScreen}
+          />
+          <Stack.Screen
+            name="AdminHome"
+            component={AdminTabs}
           />
         </Stack.Navigator>
       </NavigationContainer>
