@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar, Platform } from 'react-native';
@@ -7,12 +7,19 @@ import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeTabs'; // Import Home screen
 import AdminTabs from './screens/AdminTabs'; // Import Admin tabs
 import AdminLoginScreen from './screens/AdminLoginScreen'; // Import Admin Login screen
+import { initializeAdminCredentials } from './utils/initializeAdmin';
+import { UserProvider } from './contexts/UserContext';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  useEffect(() => {
+    // Initialize admin credentials when app starts
+    initializeAdminCredentials();
+  }, []);
+
   return (
-    <>
+    <UserProvider>
       <StatusBar 
         barStyle={Platform.OS === 'ios' ? 'light-content' : 'dark-content'} 
         backgroundColor={Platform.OS === 'android' ? '#2E7D32' : undefined}
@@ -49,6 +56,6 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
-    </>
+    </UserProvider>
   );
 }

@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
+import { AdminService } from "../services/adminService"
 import { 
   spacing, 
   fontSize, 
@@ -19,6 +20,23 @@ import {
 const { width } = Dimensions.get("window")
 
 export default function AdminProfileScreen() {
+  const [adminEmail, setAdminEmail] = useState("admin@gmail.com")
+
+  useEffect(() => {
+    loadAdminCredentials()
+  }, [])
+
+  const loadAdminCredentials = async () => {
+    try {
+      const credentials = await AdminService.getAdminCredentials()
+      if (credentials) {
+        setAdminEmail(credentials.email)
+      }
+    } catch (error) {
+      console.error("Error loading admin credentials:", error)
+    }
+  }
+
   const profileStats = [
     { label: "Total Logins", value: "1,247", icon: "log-in", color: "#4CAF50" },
     { label: "Last Active", value: "2 hours ago", icon: "time", color: "#2196F3" },
@@ -50,7 +68,7 @@ export default function AdminProfileScreen() {
             </View>
             <Text style={styles.profileName}>Administrator</Text>
             <Text style={styles.profileRole}>Super Admin</Text>
-            <Text style={styles.profileEmail}>admin@gmail.com</Text>
+            <Text style={styles.profileEmail}>{adminEmail}</Text>
           </View>
         </LinearGradient>
       </View>
@@ -157,7 +175,7 @@ export default function AdminProfileScreen() {
                 <Ionicons name="mail" size={20} color="#4CAF50" />
                 <Text style={styles.accountLabelText}>Email</Text>
               </View>
-              <Text style={styles.accountValue}>admin@gmail.com</Text>
+              <Text style={styles.accountValue}>{adminEmail}</Text>
             </View>
             <View style={styles.accountRow}>
               <View style={styles.accountLabel}>

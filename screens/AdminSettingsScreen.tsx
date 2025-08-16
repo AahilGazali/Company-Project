@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -6,9 +6,14 @@ import {
   ScrollView,
   Pressable,
   Switch,
+  Alert,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import AdminCredentialsModal from "../components/AdminCredentialsModal"
+import { AdminService } from "../services/adminService"
 import { 
   spacing, 
   fontSize, 
@@ -17,11 +22,111 @@ import {
   getIconSize
 } from "../utils/responsive"
 
+type RootStackParamList = {
+  Login: undefined
+  Register: undefined
+  Home: undefined
+  AdminLogin: undefined
+  AdminHome: undefined
+}
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>
+
 export default function AdminSettingsScreen() {
+  const navigation = useNavigation<NavigationProp>()
   const [notifications, setNotifications] = useState(true)
   const [autoBackup, setAutoBackup] = useState(true)
   const [darkMode, setDarkMode] = useState(false)
   const [twoFactor, setTwoFactor] = useState(true)
+  const [credentialsModalVisible, setCredentialsModalVisible] = useState(false)
+  const [adminEmail, setAdminEmail] = useState("admin@gmail.com")
+  const [adminPassword, setAdminPassword] = useState("••••••")
+
+  useEffect(() => {
+    loadAdminCredentials()
+  }, [])
+
+  const loadAdminCredentials = async () => {
+    try {
+      const credentials = await AdminService.getAdminCredentials()
+      if (credentials) {
+        setAdminEmail(credentials.email)
+        setAdminPassword("••••••")
+      }
+    } catch (error) {
+      console.error("Error loading admin credentials:", error)
+    }
+  }
+
+  const handleCredentialsUpdated = () => {
+    loadAdminCredentials()
+    // Navigate back to login screen
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'AdminLogin' }],
+    })
+  }
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'AdminLogin' }],
+            })
+          }
+        }
+      ]
+    )
+  }
+
+  const handleSecurityAction = (action: string) => {
+    switch (action) {
+      case "Change Password":
+        setCredentialsModalVisible(true)
+        break
+      case "API Keys":
+        Alert.alert("Info", "API Keys management coming soon!")
+        break
+      case "Security Audit":
+        Alert.alert("Info", "Security Audit feature coming soon!")
+        break
+      case "Privacy Policy":
+        Alert.alert("Info", "Privacy Policy feature coming soon!")
+        break
+      default:
+        break
+    }
+  }
+
+  const handleDataAction = (action: string) => {
+    switch (action) {
+      case "Export Data":
+        Alert.alert("Info", "Data export feature coming soon!")
+        break
+      case "Clear Cache":
+        Alert.alert("Info", "Cache cleared successfully!")
+        break
+      case "Reset Settings":
+        Alert.alert("Info", "Settings reset feature coming soon!")
+        break
+      case "Help & Support":
+        Alert.alert("Info", "Help & Support feature coming soon!")
+        break
+      default:
+        break
+    }
+  }
 
   const settingsSections = [
     {
@@ -81,10 +186,13 @@ export default function AdminSettingsScreen() {
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>Administrator</Text>
-              <Text style={styles.profileEmail}>admin@gmail.com</Text>
+              <Text style={styles.profileEmail}>{adminEmail}</Text>
               <Text style={styles.profileRole}>Super Admin</Text>
             </View>
-            <Pressable style={styles.editButton}>
+            <Pressable 
+              style={styles.editButton}
+              onPress={() => setCredentialsModalVisible(true)}
+            >
               <Ionicons name="create" size={20} color="#4CAF50" />
             </Pressable>
           </View>
@@ -112,7 +220,16 @@ export default function AdminSettingsScreen() {
                         thumbColor="#FFF"
                       />
                     ) : (
-                      <Pressable style={styles.settingButton}>
+                      <Pressable 
+                        style={styles.settingButton}
+                        onPress={() => {
+                          if (section.title === "Security") {
+                            handleSecurityAction(item.label)
+                          } else if (section.title === "Data Management") {
+                            handleDataAction(item.label)
+                          }
+                        }}
+                      >
                         <Ionicons name="chevron-forward" size={20} color="#999" />
                       </Pressable>
                     )}
@@ -147,7 +264,7 @@ export default function AdminSettingsScreen() {
         </View>
 
         {/* Logout Button */}
-        <Pressable style={styles.logoutButton}>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <LinearGradient
             colors={["#F44336", "#D32F2F"]}
             style={styles.logoutGradient}
@@ -157,6 +274,12 @@ export default function AdminSettingsScreen() {
           </LinearGradient>
         </Pressable>
       </ScrollView>
+
+             <AdminCredentialsModal
+         visible={credentialsModalVisible}
+         onClose={() => setCredentialsModalVisible(false)}
+         onCredentialsUpdated={handleCredentialsUpdated}
+       />
     </View>
   )
 }

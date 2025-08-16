@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
+import { useUser } from '../contexts/UserContext';
 import { 
   spacing, 
   fontSize, 
@@ -45,6 +46,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [userData, setUserData] = useState<UserData>({});
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const { user: contextUser, logout: contextLogout, isAuthenticated } = useUser();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -77,6 +79,16 @@ export default function ProfileScreen({ navigation }: any) {
     return () => unsubscribe();
   }, []);
 
+  // Use context user data if available (for admin-created users)
+  const displayUser = contextUser || user;
+  const displayUserData = contextUser ? {
+    name: contextUser.fullName,
+    email: contextUser.email,
+    projectName: contextUser.projectName,
+    employeeId: contextUser.employeeId,
+    createdAt: contextUser.createdAt
+  } : userData;
+
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -91,11 +103,21 @@ export default function ProfileScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut(auth);
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
+              if (contextUser) {
+                // Logout from context (admin-created user)
+                await contextLogout();
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } else if (user) {
+                // Logout from Firebase Auth
+                await signOut(auth);
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              }
             } catch (error: any) {
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
@@ -114,7 +136,7 @@ export default function ProfileScreen({ navigation }: any) {
     );
   }
 
-  if (!user) {
+  if (!displayUser) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Please login to view your profile</Text>
@@ -152,7 +174,7 @@ export default function ProfileScreen({ navigation }: any) {
                     style={styles.avatarGradient}
                   >
                     <Text style={styles.avatarText}>
-                      {userData.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+                      {displayUserData.name ? displayUserData.name.charAt(0).toUpperCase() : 'U'}
                     </Text>
                   </LinearGradient>
                 </View>
@@ -171,7 +193,7 @@ export default function ProfileScreen({ navigation }: any) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Full Name</Text>
-                      <Text style={styles.infoValue}>{userData.name || 'Not provided'}</Text>
+                      <Text style={styles.infoValue}>{displayUserData.name || 'Not provided'}</Text>
                     </View>
                   </View>
 
@@ -181,7 +203,7 @@ export default function ProfileScreen({ navigation }: any) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Email</Text>
-                      <Text style={styles.infoValue}>{userData.email || 'Not provided'}</Text>
+                      <Text style={styles.infoValue}>{displayUserData.email || 'Not provided'}</Text>
                     </View>
                   </View>
 
@@ -191,7 +213,7 @@ export default function ProfileScreen({ navigation }: any) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Employee ID</Text>
-                      <Text style={styles.infoValue}>{userData.employeeId || 'Not provided'}</Text>
+                      <Text style={styles.infoValue}>{displayUserData.employeeId || 'Not provided'}</Text>
                     </View>
                   </View>
 
@@ -201,7 +223,7 @@ export default function ProfileScreen({ navigation }: any) {
                     </View>
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Project Name</Text>
-                      <Text style={styles.infoValue}>{userData.projectName || 'Not provided'}</Text>
+                      <Text style={styles.infoValue}>{displayUserData.projectName || 'Not provided'}</Text>
                     </View>
                   </View>
                 </View>

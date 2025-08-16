@@ -1,37 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read and write their own user documents
+    // Allow users to read/write their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow users to read and write their own RCM programs
+    // Allow users to read/write their own imported files
+    match /importedFiles/{fileId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Allow users to read/write their own RCM programs
     match /rcmPrograms/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow users to read and write their own queries
-    match /queries/{document} {
+    // Allow users to read/write their own dashboards
+    match /dashboards/{dashboardId} {
       allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
+        resource.data.userId == request.auth.uid;
     }
     
-    // Allow users to manage their own imported files
-    match /importedFiles/{document} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
+    // Admin collection - allow full access for development
+    // TODO: Restrict this in production with proper authentication
+    match /admin/{document=**} {
+      allow read, write: if true;
     }
     
-    // Allow users to manage their own chart dashboards
-    match /chartDashboards/{document} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
-    }
-    
-    // Default deny all other requests
-    match /{document=**} {
-      allow read, write: if false;
+    // Users collection - allow admin operations for development
+    // TODO: Restrict this in production with proper admin role checks
+    match /users/{document=**} {
+      allow create: if true;  // Allow creating new users
+      allow read, write: if true;  // Allow reading and updating users
     }
   }
 }

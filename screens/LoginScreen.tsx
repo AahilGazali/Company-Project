@@ -11,11 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth } from "../firebaseConfig"
+import { UserAuthService } from "../services/userAuthService"
+import { useUser } from "../contexts/UserContext"
 import { 
   spacing, 
   fontSize, 
@@ -29,6 +32,8 @@ import {
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { setUser } = useUser()
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -36,15 +41,44 @@ export default function LoginScreen({ navigation }: any) {
       return
     }
 
+    setIsLoading(true)
     try {
       const trimmedEmail = email.trim()
       
-      // Regular user login
-      await signInWithEmailAndPassword(auth, trimmedEmail, password)
-      Alert.alert("Success", "Logged in successfully!")
-      navigation.replace("Home")
+      // First try Firebase Auth (for existing users)
+      try {
+        await signInWithEmailAndPassword(auth, trimmedEmail, password)
+        Alert.alert("Success", "Logged in successfully!")
+        navigation.replace("Home")
+        return
+      } catch (firebaseError: any) {
+        // If Firebase Auth fails, try custom user authentication
+        console.log("Firebase Auth failed, trying custom auth...")
+      }
+      
+      // Try custom user authentication (for admin-created users)
+      const user = await UserAuthService.authenticateUser({
+        email: trimmedEmail,
+        password: password
+      })
+      
+      if (user) {
+        // Store user data in context
+        await setUser(user)
+        Alert.alert("Success", `Welcome back, ${user.fullName}!`)
+        navigation.replace("Home")
+      } else {
+        Alert.alert("Error", "Invalid email or password. Please try again.")
+      }
     } catch (error: any) {
-      Alert.alert("Error", error.message)
+      console.error("Login error:", error)
+      if (error.message === "User account is not active") {
+        Alert.alert("Error", "Your account is not active. Please contact administrator.")
+      } else {
+        Alert.alert("Error", "Invalid email or password. Please try again.")
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -104,14 +138,18 @@ export default function LoginScreen({ navigation }: any) {
                   />
                 </View>
 
-                <Pressable style={styles.button} onPress={handleLogin}>
+                <Pressable style={styles.button} onPress={handleLogin} disabled={isLoading}>
                   <LinearGradient
                     colors={["#4CAF50", "#2E7D32"]}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.buttonText}>Login</Text>
+                    {isLoading ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <Text style={styles.buttonText}>Login</Text>
+                    )}
                   </LinearGradient>
                 </Pressable>
 

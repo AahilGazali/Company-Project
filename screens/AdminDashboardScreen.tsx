@@ -30,7 +30,7 @@ export default function AdminDashboardScreen() {
       change: "+12%",
       icon: "people",
       color: "#4CAF50",
-      gradient: ["#4CAF50", "#2E7D32"]
+      gradient: ["#4CAF50", "#2E7D32"] as const
     },
     {
       title: "Active Programs",
@@ -38,7 +38,7 @@ export default function AdminDashboardScreen() {
       change: "+5%",
       icon: "list",
       color: "#2196F3",
-      gradient: ["#2196F3", "#1976D2"]
+      gradient: ["#2196F3", "#1976D2"] as const
     },
     {
       title: "Reports Generated",
@@ -46,7 +46,7 @@ export default function AdminDashboardScreen() {
       change: "+23%",
       icon: "document-text",
       color: "#FF9800",
-      gradient: ["#FF9800", "#F57C00"]
+      gradient: ["#FF9800", "#F57C00"] as const
     },
     {
       title: "System Health",
@@ -54,12 +54,11 @@ export default function AdminDashboardScreen() {
       change: "+2%",
       icon: "checkmark-circle",
       color: "#4CAF50",
-      gradient: ["#4CAF50", "#2E7D32"]
+      gradient: ["#4CAF50", "#2E7D32"] as const
     }
   ]
 
   const quickActions = [
-    { title: "Add User", icon: "person-add", color: "#4CAF50" },
     { title: "Generate Report", icon: "document-text", color: "#2196F3" },
     { title: "System Settings", icon: "settings", color: "#FF9800" },
     { title: "View Logs", icon: "list", color: "#9C27B0" }

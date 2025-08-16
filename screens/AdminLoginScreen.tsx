@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   View,
   TextInput,
@@ -14,6 +14,7 @@ import {
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
+import { AdminService } from "../services/adminService"
 import { 
   spacing, 
   fontSize, 
@@ -24,26 +25,61 @@ import {
   getIconSize 
 } from "../utils/responsive"
 
-
-
 export default function AdminLoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleAdminLogin = () => {
+  // Initialize admin credentials on component mount
+  useEffect(() => {
+    initializeAdminCredentials()
+  }, [])
+
+  const initializeAdminCredentials = async () => {
+    try {
+      console.log('Checking admin credentials...')
+      const hasCredentials = await AdminService.hasAdminCredentials()
+      
+      if (!hasCredentials) {
+        console.log('Setting up default admin credentials...')
+        // Set default credentials if none exist
+        await AdminService.setInitialAdminCredentials("admin@gmail.com", "123456")
+        console.log('Default admin credentials set successfully')
+      } else {
+        console.log('Admin credentials already exist')
+      }
+    } catch (error) {
+      console.error("Error initializing admin credentials:", error)
+      // Show user-friendly error message
+      Alert.alert(
+        "Setup Error", 
+        "Unable to initialize admin system. Please check your internet connection and try again.",
+        [{ text: "OK" }]
+      )
+    }
+  }
+
+  const handleAdminLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Admin email and password are required.")
       return
     }
 
-    const trimmedEmail = email.trim()
-    
-    // Check if it's admin login
-    if (trimmedEmail === "admin@gmail.com" && password === "123456") {
-      Alert.alert("Success", "Admin login successful!")
-      navigation.replace("AdminHome")
-    } else {
-      Alert.alert("Error", "Invalid admin credentials. Please use admin@gmail.com and password 123456")
+    setIsLoading(true)
+    try {
+      const trimmedEmail = email.trim()
+      const isValid = await AdminService.verifyAdminCredentials(trimmedEmail, password)
+      
+      if (isValid) {
+        Alert.alert("Success", "Admin login successful!")
+        navigation.replace("AdminHome")
+      } else {
+        Alert.alert("Error", "Invalid admin credentials. Please check your email and password.")
+      }
+    } catch (error) {
+      Alert.alert("Error", "Login failed. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -103,18 +139,20 @@ export default function AdminLoginScreen({ navigation }: any) {
                   />
                 </View>
 
-                <Pressable style={styles.button} onPress={handleAdminLogin}>
+                <Pressable style={styles.button} onPress={handleAdminLogin} disabled={isLoading}>
                   <LinearGradient
                     colors={["#FF9800", "#F57C00"]}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.buttonText}>Admin Login</Text>
+                    <Text style={styles.buttonText}>
+                      {isLoading ? "Logging in..." : "Admin Login"}
+                    </Text>
                   </LinearGradient>
                 </Pressable>
 
-                <Pressable onPress={() => navigation.goBack()}>
+                <Pressable onPress={() => navigation.navigate("Login")}>
                   <Text style={styles.link}>
                     ← Back to Regular Login
                   </Text>
