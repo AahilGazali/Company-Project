@@ -59,13 +59,17 @@ export default function AdminUsersScreen() {
     email: string
     password: string
     confirmPassword: string
+    role: string
+    status: string
   }>({
     fullName: "",
     projectName: "",
     employeeId: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    role: "User",
+    status: "Active"
   })
 
   // Edit form state
@@ -76,13 +80,17 @@ export default function AdminUsersScreen() {
     email: string
     password: string
     confirmPassword: string
+    role: string
+    status: string
   }>({
     fullName: "",
     projectName: "",
     employeeId: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    role: "User",
+    status: "Active"
   })
 
   // Fetch users from Firebase
@@ -148,6 +156,18 @@ export default function AdminUsersScreen() {
     
     loadUsers()
   }, [])
+
+  // Debug useEffect to log formData changes
+  useEffect(() => {
+    console.log('formData changed:', formData);
+  }, [formData])
+
+  // Debug useEffect to log when modal opens
+  useEffect(() => {
+    if (addUserModalVisible) {
+      console.log('Modal opened - Role:', formData.role, 'Status:', formData.status);
+    }
+  }, [addUserModalVisible, formData.role, formData.status])
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase().trim()
@@ -251,8 +271,8 @@ export default function AdminUsersScreen() {
         email: formData.email.trim().toLowerCase(),
         projectName: formData.projectName.trim(),
         employeeId: formData.employeeId.trim(),
-        role: "User",
-        status: "Active",
+        role: formData.role,
+        status: formData.status,
         lastLogin: null,
         createdAt: serverTimestamp(),
         isAdminCreated: true // Flag to identify admin-created users
@@ -295,7 +315,9 @@ export default function AdminUsersScreen() {
         employeeId: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        role: "User",
+        status: "Active"
       })
     } catch (error) {
       console.error("Error resetting form:", error)
@@ -306,15 +328,17 @@ export default function AdminUsersScreen() {
         employeeId: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        role: "User",
+        status: "Active"
       })
     }
   }
 
   const openAddUserModal = () => {
     try {
-      setAddUserModalVisible(true)
       resetForm()
+      setAddUserModalVisible(true)
     } catch (error) {
       console.error("Error opening add user modal:", error)
       Alert.alert("Error", "Failed to open add user modal. Please try again.")
@@ -330,7 +354,9 @@ export default function AdminUsersScreen() {
         employeeId: user.employeeId || "",
         email: user.email || "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        role: user.role || "User",
+        status: user.status || "Active"
       })
       setEditUserModalVisible(true)
     } catch (error) {
@@ -373,6 +399,8 @@ export default function AdminUsersScreen() {
         email: editFormData.email.trim().toLowerCase(),
         projectName: editFormData.projectName.trim(),
         employeeId: editFormData.employeeId.trim(),
+        role: editFormData.role,
+        status: editFormData.status,
       }
       
       // Update Firestore first
@@ -428,7 +456,9 @@ export default function AdminUsersScreen() {
         employeeId: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        role: "User",
+        status: "Active"
       })
       setEditingUser(null)
     } catch (error) {
@@ -440,7 +470,9 @@ export default function AdminUsersScreen() {
         employeeId: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        role: "User",
+        status: "Active"
       })
       setEditingUser(null)
     }
@@ -514,6 +546,14 @@ export default function AdminUsersScreen() {
     },
     cancelButtonText: {
       color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    roleButton: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      borderColor: isDarkMode ? "#404040" : "#E0E0E0",
+    },
+    statusButton: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      borderColor: isDarkMode ? "#404040" : "#E0E0E0",
     }
   }
 
@@ -708,17 +748,13 @@ export default function AdminUsersScreen() {
                         {user.projectName && typeof user.projectName === 'string' ? user.projectName : 'No project'}
                       </Text>
                       <View style={styles.userMeta}>
-                        <View style={[styles.roleBadge, { backgroundColor: user.role === 'Admin' ? '#FF5722' : user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
+                        <View style={[styles.roleBadge, { backgroundColor: user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
                           <Text style={styles.roleText}>{user.role || 'User'}</Text>
                         </View>
                         <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
                           <Text style={styles.statusText}>{user.status || 'Active'}</Text>
                         </View>
-                        {user.isAdminCreated && (
-                          <View style={[styles.adminCreatedBadge, { backgroundColor: '#9C27B0' }]}>
-                            <Text style={styles.roleText}>Admin</Text>
-                          </View>
-                        )}
+
                       </View>
                     </View>
                   </View>
@@ -769,9 +805,9 @@ export default function AdminUsersScreen() {
           </View>
           <View style={[styles.statCard, dynamicStyles.statCard]}>
             <Text style={styles.statNumber}>
-              {Array.isArray(users) ? users.filter(u => u && u.role === 'Admin').length : 0}
+              {Array.isArray(users) ? users.filter(u => u && u.role === 'Manager').length : 0}
             </Text>
-            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Admins</Text>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Managers</Text>
           </View>
         </View>
       </ScrollView>
@@ -878,40 +914,120 @@ export default function AdminUsersScreen() {
                 </View>
               </View>
 
-              <View style={styles.modalButtons}>
-                <Pressable 
-                  style={[styles.cancelButton, dynamicStyles.cancelButton]}
-                  onPress={() => {
-                    try {
-                      setAddUserModalVisible(false)
-                    } catch (error) {
-                      console.error("Error closing modal:", error)
-                      setAddUserModalVisible(false) // Force close
-                    }
-                  }}
+              {/* Role Selection */}
+              {/* Role Selection */}
+              <View style={styles.formColumn}>
+                <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Role</Text>
+                <View style={styles.enhancedRoleContainer}>
+                  {["User", "Manager"].map((role) => (
+                    <Pressable
+                      key={role}
+                      style={[
+                        styles.enhancedRoleButton,
+                        formData.role === role && styles.enhancedRoleButtonActive,
+                        formData.role === role && role === "Manager" && styles.managerRoleActive,
+                        formData.role === role && role === "User" && styles.userRoleActive,
+                      ]}
+                      onPress={() => {
+                        try {
+                          setFormData({ ...formData, role: role })
+                        } catch (error) {
+                          console.error("Error updating role:", error)
+                        }
+                      }}
+                    >
+                      <View style={styles.roleButtonContent}>
+                        <Ionicons
+                          name={role === "Manager" ? "people" : "person"}
+                          size={20}
+                          color={formData.role === role ? "#FFF" : isDarkMode ? "#B0B0B0" : "#666"}
+                        />
+                        <Text
+                          style={[
+                            styles.enhancedRoleButtonText,
+                            formData.role === role && styles.enhancedRoleButtonTextActive,
+                          ]}
+                        >
+                          {role}
+                        </Text>
+                      </View>
+                      {formData.role === role && (
+                        <View style={styles.selectedIndicator}>
+                          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Status Selection */}
+              <View style={styles.formColumn}>
+                <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Status</Text>
+                <View style={styles.enhancedStatusContainer}>
+                  {["Active", "Inactive"].map((status) => (
+                    <Pressable
+                      key={status}
+                      style={[
+                        styles.enhancedStatusButton,
+                        formData.status === status && styles.enhancedStatusButtonActive,
+                        formData.status === status && status === "Active" && styles.activeStatusActive,
+                        formData.status === status && status === "Inactive" && styles.inactiveStatusActive,
+                      ]}
+                      onPress={() => {
+                        try {
+                          setFormData({ ...formData, status: status })
+                        } catch (error) {
+                          console.error("Error updating status:", error)
+                        }
+                      }}
+                    >
+                      <View style={styles.statusButtonContent}>
+                        <View
+                          style={[
+                            styles.statusIndicatorDot,
+                            { backgroundColor: status === "Active" ? "#4CAF50" : "#F44336" },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.enhancedStatusButtonText,
+                            formData.status === status && styles.enhancedStatusButtonTextActive,
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </View>
+                      {formData.status === status && (
+                        <View style={styles.selectedIndicator}>
+                          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.enhancedModalButtons}>
+                <Pressable
+                  style={[styles.enhancedCancelButton, { borderColor: isDarkMode ? "#404040" : "#E0E0E0" }]}
+                  onPress={() => setAddUserModalVisible(false)}
                 >
-                  <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Cancel</Text>
+                  <Ionicons name="close-circle-outline" size={20} color={isDarkMode ? "#B0B0B0" : "#666"} />
+                  <Text style={[styles.enhancedCancelButtonText, { color: isDarkMode ? "#B0B0B0" : "#666" }]}>
+                    Cancel
+                  </Text>
                 </Pressable>
-                <Pressable 
-                  style={styles.addUserButton}
-                  onPress={() => {
-                    try {
-                      handleAddUser()
-                    } catch (error) {
-                      console.error("Error handling add user:", error)
-                      Alert.alert("Error", "Failed to add user. Please try again.")
-                    }
-                  }}
-                  disabled={isAddingUser}
-                >
-                  <LinearGradient
-                    colors={['#4CAF50', '#2E7D32']}
-                    style={styles.addUserButtonGradient}
-                  >
+
+                <Pressable style={styles.enhancedAddButton} onPress={handleAddUser} disabled={isAddingUser}>
+                  <LinearGradient colors={["#4CAF50", "#2E7D32"]} style={styles.enhancedAddButtonGradient}>
                     {isAddingUser ? (
-                      <ActivityIndicator color="#FFF" size="small" />
+                      <ActivityIndicator size="small" color="#FFF" />
                     ) : (
-                      <Text style={styles.addUserButtonText}>Add User</Text>
+                      <>
+                        <Ionicons name="person-add" size={20} color="#FFF" />
+                        <Text style={styles.enhancedAddButtonText}>Add User</Text>
+                      </>
                     )}
                   </LinearGradient>
                 </Pressable>
@@ -1025,6 +1141,99 @@ export default function AdminUsersScreen() {
                   </Text>
                 </View>
               )}
+
+              {/* Role Selection */}
+              <View style={styles.formColumn}>
+                <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Role</Text>
+                <View style={styles.enhancedRoleContainer}>
+                  {["User", "Manager"].map((role) => (
+                    <Pressable
+                      key={role}
+                      style={[
+                        styles.enhancedRoleButton,
+                        editFormData.role === role && styles.enhancedRoleButtonActive,
+                        editFormData.role === role && role === "Manager" && styles.managerRoleActive,
+                        editFormData.role === role && role === "User" && styles.userRoleActive,
+                      ]}
+                      onPress={() => {
+                        try {
+                          setEditFormData({ ...editFormData, role: role })
+                        } catch (error) {
+                          console.error("Error updating role:", error)
+                        }
+                      }}
+                    >
+                      <View style={styles.roleButtonContent}>
+                        <Ionicons
+                          name={role === "Manager" ? "people" : "person"}
+                          size={20}
+                          color={editFormData.role === role ? "#FFF" : isDarkMode ? "#B0B0B0" : "#666"}
+                        />
+                        <Text
+                          style={[
+                            styles.enhancedRoleButtonText,
+                            editFormData.role === role && styles.enhancedRoleButtonTextActive,
+                          ]}
+                        >
+                          {role}
+                        </Text>
+                      </View>
+                      {editFormData.role === role && (
+                        <View style={styles.selectedIndicator}>
+                          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Status Selection */}
+              <View style={styles.formColumn}>
+                <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Status</Text>
+                <View style={styles.enhancedStatusContainer}>
+                  {["Active", "Inactive"].map((status) => (
+                    <Pressable
+                      key={status}
+                      style={[
+                        styles.enhancedStatusButton,
+                        editFormData.status === status && styles.enhancedStatusButtonActive,
+                        editFormData.status === status && status === "Active" && styles.activeStatusActive,
+                        editFormData.status === status && status === "Inactive" && styles.inactiveStatusActive,
+                      ]}
+                      onPress={() => {
+                        try {
+                          setEditFormData({ ...editFormData, status: status })
+                        } catch (error) {
+                          console.error("Error updating status:", error)
+                        }
+                      }}
+                    >
+                      <View style={styles.statusButtonContent}>
+                        <View
+                          style={[
+                            styles.statusIndicatorDot,
+                            { backgroundColor: status === "Active" ? "#4CAF50" : "#F44336" },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.enhancedStatusButtonText,
+                            editFormData.status === status && styles.enhancedStatusButtonTextActive,
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </View>
+                      {editFormData.status === status && (
+                        <View style={styles.selectedIndicator}>
+                          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
               
               {/* Cleanup button for existing users with conflicting fields */}
               <View style={styles.cleanupSection}>
@@ -1048,42 +1257,26 @@ export default function AdminUsersScreen() {
                 </Pressable>
               </View>
 
-              <View style={styles.modalButtons}>
-                <Pressable 
-                  style={[styles.cancelButton, dynamicStyles.cancelButton]}
-                  onPress={() => {
-                    try {
-                      setEditUserModalVisible(false)
-                      resetEditForm()
-                    } catch (error) {
-                      console.error("Error closing edit modal:", error)
-                      setEditUserModalVisible(false)
-                      resetEditForm()
-                    }
-                  }}
+              <View style={styles.enhancedModalButtons}>
+                <Pressable
+                  style={[styles.enhancedCancelButton, { borderColor: isDarkMode ? "#404040" : "#E0E0E0" }]}
+                  onPress={() => setEditUserModalVisible(false)}
                 >
-                  <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Cancel</Text>
+                  <Ionicons name="close-circle-outline" size={20} color={isDarkMode ? "#B0B0B0" : "#666"} />
+                  <Text style={[styles.enhancedCancelButtonText, { color: isDarkMode ? "#B0B0B0" : "#666" }]}>
+                    Cancel
+                  </Text>
                 </Pressable>
-                <Pressable 
-                  style={styles.addUserButton}
-                  onPress={() => {
-                    try {
-                      handleEditUser()
-                    } catch (error) {
-                      console.error("Error handling edit user:", error)
-                      Alert.alert("Error", "Failed to edit user. Please try again.")
-                    }
-                  }}
-                  disabled={isEditingUser}
-                >
-                  <LinearGradient
-                    colors={['#2196F3', '#1976D2']}
-                    style={styles.addUserButtonGradient}
-                  >
+
+                <Pressable style={styles.enhancedAddButton} onPress={handleEditUser} disabled={isEditingUser}>
+                  <LinearGradient colors={["#2196F3", "#1976D2"]} style={styles.enhancedAddButtonGradient}>
                     {isEditingUser ? (
-                      <ActivityIndicator color="#FFF" size="small" />
+                      <ActivityIndicator size="small" color="#FFF" />
                     ) : (
-                      <Text style={styles.editUserButtonText}>Update User</Text>
+                      <>
+                        <Ionicons name="save" size={20} color="#FFF" />
+                        <Text style={styles.enhancedAddButtonText}>Save Changes</Text>
+                      </>
                     )}
                   </LinearGradient>
                 </Pressable>
@@ -1478,5 +1671,233 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: fontSize.small,
     fontWeight: '600',
+  },
+  // Role and Status button styles
+  roleContainer: {
+    flexDirection: 'row',
+    gap: spacing.small,
+  },
+  roleButton: {
+    flex: 1,
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+    borderRadius: borderRadius.medium,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    minHeight: 40,
+  },
+  roleButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+    borderWidth: 3,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+    transform: [{ scale: 1.05 }],
+  },
+  roleButtonText: {
+    fontSize: fontSize.small,
+    fontWeight: '600',
+    color: '#666',
+  },
+  roleButtonTextActive: {
+    color: '#FFF',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    gap: spacing.small,
+  },
+  statusButton: {
+    flex: 1,
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+    borderRadius: borderRadius.medium,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    minHeight: 40,
+  },
+  statusButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+    borderWidth: 3,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+    transform: [{ scale: 1.05 }],
+  },
+  statusButtonText: {
+    fontSize: fontSize.small,
+    fontWeight: '600',
+    color: '#666',
+  },
+  statusButtonTextActive: {
+    color: '#FFF',
+  },
+  debugText: {
+    fontSize: fontSize.small,
+    color: '#999',
+    marginBottom: spacing.small,
+    fontStyle: 'italic',
+  },
+  // Enhanced Role and Status button styles
+  enhancedRoleContainer: {
+    flexDirection: "row",
+    gap: spacing.small,
+    marginBottom: spacing.large,
+  },
+  enhancedRoleButton: {
+    flex: 1,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.small,
+    borderRadius: borderRadius.large,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+    minHeight: 60,
+    position: "relative",
+    ...getShadow(2),
+  },
+  enhancedRoleButtonActive: {
+    borderWidth: 3,
+    ...getShadow(6),
+    transform: [{ scale: 1.02 }],
+  },
+  userRoleActive: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+  },
+  managerRoleActive: {
+    backgroundColor: "#2196F3",
+    borderColor: "#2196F3",
+    shadowColor: "#2196F3",
+  },
+  roleButtonContent: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  enhancedRoleButtonText: {
+    fontSize: fontSize.small,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: spacing.tiny,
+  },
+  enhancedRoleButtonTextActive: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  selectedIndicator: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    padding: 2,
+  },
+  enhancedStatusContainer: {
+    flexDirection: "row",
+    gap: spacing.small,
+    marginBottom: spacing.large,
+  },
+  enhancedStatusButton: {
+    flex: 1,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.small,
+    borderRadius: borderRadius.large,
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+    minHeight: 60,
+    position: "relative",
+    ...getShadow(2),
+  },
+  enhancedStatusButtonActive: {
+    borderWidth: 3,
+    ...getShadow(6),
+    transform: [{ scale: 1.02 }],
+  },
+  activeStatusActive: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+  },
+  inactiveStatusActive: {
+    backgroundColor: "#F44336",
+    borderColor: "#F44336",
+    shadowColor: "#F44336",
+  },
+  statusButtonContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+  statusIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.tiny,
+  },
+  enhancedStatusButtonText: {
+    fontSize: fontSize.small,
+    fontWeight: "600",
+    color: "#666",
+  },
+  enhancedStatusButtonTextActive: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  enhancedModalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: spacing.medium,
+    marginTop: spacing.large,
+    paddingTop: spacing.large,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+  },
+  enhancedCancelButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.large,
+    borderRadius: borderRadius.large,
+    borderWidth: 2,
+    backgroundColor: "transparent",
+    gap: spacing.small,
+  },
+  enhancedCancelButtonText: {
+    fontSize: fontSize.medium,
+    fontWeight: "600",
+  },
+  enhancedAddButton: {
+    flex: 2,
+    borderRadius: borderRadius.large,
+    overflow: "hidden",
+    ...getShadow(4),
+  },
+  enhancedAddButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.large,
+    gap: spacing.small,
+  },
+  enhancedAddButtonText: {
+    color: "#FFF",
+    fontSize: fontSize.medium,
+    fontWeight: "bold",
   },
 })
