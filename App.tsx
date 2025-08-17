@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar, Platform } from 'react-native';
@@ -6,6 +6,7 @@ import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeTabs'; // Import Home screen
 import AdminTabs from './screens/AdminTabs'; // Import Admin tabs
 import AdminLoginScreen from './screens/AdminLoginScreen'; // Import Admin Login screen
+import SplashScreen from './components/SplashScreen'; // Import SplashScreen
 import { initializeAdminCredentials } from './utils/initializeAdmin';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -54,10 +55,26 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     // Initialize admin credentials when app starts
     initializeAdminCredentials();
   }, []);
+
+  const handleSplashFinish = () => {
+    setIsLoading(false);
+  };
+
+  if (isLoading) {
+    return (
+      <ThemeProvider>
+        <UserProvider>
+          <SplashScreen onFinish={handleSplashFinish} />
+        </UserProvider>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider>
