@@ -182,11 +182,7 @@ export default function LoginScreen({ navigation }: any) {
                   </LinearGradient>
                 </Pressable>
 
-                <Pressable onPress={() => navigation.navigate("Register")}>
-                  <Text style={styles.link}>
-                    Don't have an account? <Text style={styles.linkBold}>Register</Text>
-                  </Text>
-                </Pressable>
+
               </View>
             </View>
 

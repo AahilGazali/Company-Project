@@ -98,7 +98,6 @@ export default function AdminTabs() {
           if (route.name === "Dashboard") iconName = focused ? "grid" : "grid-outline"
           else if (route.name === "Users") iconName = focused ? "people" : "people-outline"
           else if (route.name === "Analytics") iconName = focused ? "analytics" : "analytics-outline"
-          else if (route.name === "Settings") iconName = focused ? "settings" : "settings-outline"
           else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
           return <TabBarIcon name={iconName} color={color} size={size} focused={focused} />
@@ -125,7 +124,6 @@ export default function AdminTabs() {
       <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
       <Tab.Screen name="Users" component={AdminUsersScreen} />
       <Tab.Screen name="Analytics" component={AdminAnalyticsScreen} />
-      <Tab.Screen name="Settings" component={AdminSettingsScreen} />
       <Tab.Screen name="Profile" component={AdminProfileScreen} />
     </Tab.Navigator>
   )
@@ -228,5 +226,4 @@ const styles = StyleSheet.create({
 import AdminDashboardScreen from "./AdminDashboardScreen"
 import AdminUsersScreen from "./AdminUsersScreen"
 import AdminAnalyticsScreen from "./AdminAnalyticsScreen"
-import AdminSettingsScreen from "./AdminSettingsScreen"
 import AdminProfileScreen from "./AdminProfileScreen"
