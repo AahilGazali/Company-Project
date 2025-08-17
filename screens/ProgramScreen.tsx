@@ -4,6 +4,8 @@ import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, PieChart } from 'react-native-chart-kit';
+import { useUser } from '../contexts/UserContext';
+import { getUserID } from '../utils/userUtils';
 import { 
   spacing, 
   fontSize, 
@@ -23,14 +25,18 @@ interface ProgramRow {
 }
 
 const ProgramScreen = () => {
+  const { user, isAdminCreatedUser } = useUser();
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramRow | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const user = auth.currentUser;
     if (!user) return;
-    const docRef = doc(db, 'rcmPrograms', user.uid);
+    
+    const userId = getUserID(user, isAdminCreatedUser);
+    if (!userId) return;
+    
+    const docRef = doc(db, 'rcmPrograms', userId);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         setPrograms(docSnap.data().programs || []);
@@ -39,7 +45,7 @@ const ProgramScreen = () => {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [user, isAdminCreatedUser]);
 
   // Only show programs with at least one filled data field
   const filledPrograms = programs.filter(

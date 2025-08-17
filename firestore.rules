@@ -8,8 +8,15 @@ service cloud.firestore {
     
     // Allow users to read/write their own imported files
     match /importedFiles/{fileId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
       allow read, write: if request.auth != null && 
         resource.data.userId == request.auth.uid;
+    }
+    
+    // Allow users to list imported files (for queries - Firestore will filter by userId in the query)
+    match /importedFiles/{fileId} {
+      allow list: if request.auth != null;
     }
     
     // Allow users to read/write their own RCM programs
@@ -19,6 +26,16 @@ service cloud.firestore {
     
     // Allow users to read/write their own dashboards
     match /dashboards/{dashboardId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Allow users to read/write their own chart dashboards
+    match /chartDashboards/{dashboardId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
       allow read, write: if request.auth != null && 
         resource.data.userId == request.auth.uid;
     }

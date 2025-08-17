@@ -57,7 +57,14 @@ export default function ProfileScreen({ navigation }: any) {
           // Get user data from Firestore
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData);
+            const firestoreData = userDoc.data();
+            setUserData({
+              name: firestoreData.fullName || firestoreData.name || 'User',
+              email: firestoreData.email || currentUser.email || '',
+              projectName: firestoreData.projectName || '',
+              employeeId: firestoreData.employeeId || '',
+              createdAt: firestoreData.createdAt
+            });
           } else {
             // If no Firestore data, use auth data
             setUserData({

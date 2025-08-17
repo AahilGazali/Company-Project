@@ -13,8 +13,9 @@ import {
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
-import { db } from "../firebaseConfig"
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore"
+import { db, auth } from "../firebaseConfig"
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore"
+import { createUserWithEmailAndPassword } from "firebase/auth"
 import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
@@ -33,6 +34,7 @@ interface User {
   status: string
   lastLogin: string | null
   createdAt: any
+  isAdminCreated?: boolean
 }
 
 export default function AdminUsersScreen() {
@@ -80,7 +82,8 @@ export default function AdminUsersScreen() {
           role: userData.role || "User",
           status: userData.status || "Active",
           lastLogin: userData.lastLogin || "Never",
-          createdAt: userData.createdAt
+          createdAt: userData.createdAt,
+          isAdminCreated: userData.isAdminCreated || false
         })
       })
       
@@ -135,88 +138,52 @@ export default function AdminUsersScreen() {
     if (!lastLogin) return "Never"
     
     try {
+      let date: Date | null = null
+      
       // Handle Firestore timestamp
       if (lastLogin.toDate && typeof lastLogin.toDate === 'function') {
-        const date = lastLogin.toDate()
-        if (!(date instanceof Date) || isNaN(date.getTime())) {
-          return "Invalid date"
-        }
-        
-        const now = new Date()
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-        
-        if (diffInMinutes < 1) return "Just now"
-        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
-        
-        const diffInHours = Math.floor(diffInMinutes / 60)
-        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
-        
-        const diffInDays = Math.floor(diffInHours / 24)
-        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+        date = lastLogin.toDate()
       } 
       // Handle timestamp object with seconds
       else if (lastLogin.seconds && typeof lastLogin.seconds === 'number') {
-        const date = new Date(lastLogin.seconds * 1000)
-        if (isNaN(date.getTime())) {
-          return "Invalid date"
-        }
-        
-        const now = new Date()
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-        
-        if (diffInMinutes < 1) return "Just now"
-        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
-        
-        const diffInHours = Math.floor(diffInMinutes / 60)
-        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
-        
-        const diffInDays = Math.floor(diffInHours / 24)
-        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+        date = new Date(lastLogin.seconds * 1000)
       } 
       // Handle regular Date object
       else if (lastLogin instanceof Date) {
-        if (isNaN(lastLogin.getTime())) {
-          return "Invalid date"
-        }
-        
-        const now = new Date()
-        const diffInMinutes = Math.floor((now.getTime() - lastLogin.getTime()) / (1000 * 60))
-        
-        if (diffInMinutes < 1) return "Just now"
-        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
-        
-        const diffInHours = Math.floor(diffInMinutes / 60)
-        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
-        
-        const diffInDays = Math.floor(diffInHours / 24)
-        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+        date = lastLogin
       } 
       // Handle string dates
       else if (typeof lastLogin === 'string') {
-        const date = new Date(lastLogin)
-        if (isNaN(date.getTime())) {
-          return "Invalid date"
-        }
-        
-        const now = new Date()
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-        
-        if (diffInMinutes < 1) return "Just now"
-        if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
-        
-        const diffInHours = Math.floor(diffInMinutes / 60)
-        if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
-        
-        const diffInDays = Math.floor(diffInHours / 24)
-        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
-      } 
-      else {
-        console.warn("Unknown lastLogin format:", lastLogin)
-        return "Unknown"
+        date = new Date(lastLogin)
       }
+      
+      // Validate date
+      if (!date || isNaN(date.getTime())) {
+        return "Never"
+      }
+      
+      const now = new Date()
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+      
+      if (diffInMinutes < 1) return "Just now"
+      if (diffInMinutes < 60) return `${diffInMinutes} min ago`
+      
+      const diffInHours = Math.floor(diffInMinutes / 60)
+      if (diffInHours < 24) return `${diffInHours} hr ago`
+      
+      const diffInDays = Math.floor(diffInHours / 24)
+      if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+      
+      // For older dates, show the actual date
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      })
+      
     } catch (error) {
       console.error("Error formatting lastLogin:", error, "Value:", lastLogin)
-      return "Error"
+      return "Never"
     }
   }
 
@@ -240,27 +207,47 @@ export default function AdminUsersScreen() {
     try {
       setIsAddingUser(true)
       
+      // Create Firebase Auth user first
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email.trim().toLowerCase(),
+        formData.password
+      )
+      
+      const firebaseUser = userCredential.user
+      
+      // Store user data in Firestore (without password)
       const userData = {
+        id: firebaseUser.uid, // Use Firebase UID as the document ID
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
         projectName: formData.projectName.trim(),
         employeeId: formData.employeeId.trim(),
-        password: formData.password,
         role: "User",
         status: "Active",
         lastLogin: null,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        isAdminCreated: true // Flag to identify admin-created users
       }
       
-      await addDoc(collection(db, "users"), userData)
+      // Use the Firebase UID as the document ID
+      await setDoc(doc(db, "users", firebaseUser.uid), userData)
       
       Alert.alert("Success", "User added successfully!")
       setAddUserModalVisible(false)
       resetForm()
       fetchUsers() // Refresh the users list
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding user:", error)
-      Alert.alert("Error", "Failed to add user. Please try again.")
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert("Error", "A user with this email already exists.")
+      } else if (error.code === 'auth/invalid-email') {
+        Alert.alert("Error", "Please enter a valid email address.")
+      } else if (error.code === 'auth/weak-password') {
+        Alert.alert("Error", "Password is too weak. Please use at least 6 characters.")
+      } else {
+        Alert.alert("Error", "Failed to add user. Please try again.")
+      }
     } finally {
       setIsAddingUser(false)
     }
@@ -397,7 +384,7 @@ export default function AdminUsersScreen() {
     
     Alert.alert(
       `Confirm ${action}`,
-      `Are you sure you want to ${action} this user?`,
+      `Are you sure you want to ${action} this user?${action === "deactivate" ? " They will be immediately signed out if currently logged in." : ""}`,
       [
         {
           text: "Cancel",
@@ -409,6 +396,25 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             try {
               await updateDoc(doc(db, "users", userId), { status: newStatus })
+              
+              // If deactivating, also sign out the user if they're currently logged in
+              if (action === "deactivate") {
+                try {
+                  // Check if the user being deactivated is currently logged in
+                  const currentUser = auth.currentUser
+                  if (currentUser && currentUser.uid === userId) {
+                    await auth.signOut()
+                    Alert.alert(
+                      "User Deactivated", 
+                      "This user has been deactivated and signed out. They will need to contact an administrator to reactivate their account.",
+                      [{ text: "OK" }]
+                    )
+                  }
+                } catch (signOutError) {
+                  console.error("Error signing out deactivated user:", signOutError)
+                }
+              }
+              
               await fetchUsers() // Refresh the list
             } catch (error) {
               console.error(`Error ${action}ing user:`, error)
@@ -517,11 +523,14 @@ export default function AdminUsersScreen() {
                       </Text>
                     </View>
                     <View style={styles.userDetails}>
-                      <Text style={[styles.userName, dynamicStyles.userName]}>
+                      <Text style={[styles.userName, dynamicStyles.userName]} numberOfLines={1}>
                         {user.fullName && typeof user.fullName === 'string' ? user.fullName : 'Unknown User'}
                       </Text>
-                      <Text style={[styles.userEmail, dynamicStyles.userEmail]}>
+                      <Text style={[styles.userEmail, dynamicStyles.userEmail]} numberOfLines={1}>
                         {user.email && typeof user.email === 'string' ? user.email : 'No email'}
+                      </Text>
+                      <Text style={[styles.userProject, dynamicStyles.userEmail]} numberOfLines={1}>
+                        {user.projectName && typeof user.projectName === 'string' ? user.projectName : 'No project'}
                       </Text>
                       <View style={styles.userMeta}>
                         <View style={[styles.roleBadge, { backgroundColor: user.role === 'Admin' ? '#FF5722' : user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
@@ -530,11 +539,18 @@ export default function AdminUsersScreen() {
                         <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
                           <Text style={styles.statusText}>{user.status || 'Active'}</Text>
                         </View>
+                        {user.isAdminCreated && (
+                          <View style={[styles.adminCreatedBadge, { backgroundColor: '#9C27B0' }]}>
+                            <Text style={styles.roleText}>Admin</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>
                   <View style={styles.userActions}>
-                    <Text style={[styles.lastLogin, dynamicStyles.lastLogin]}>Last: {formatLastLogin(user.lastLogin)}</Text>
+                    <Text style={[styles.lastLogin, dynamicStyles.lastLogin]}>
+                      {formatLastLogin(user.lastLogin)}
+                    </Text>
                     <View style={styles.actionButtons}>
                       <Pressable 
                         style={[styles.actionButton, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}
@@ -546,21 +562,14 @@ export default function AdminUsersScreen() {
                           color="#FFF" 
                         />
                       </Pressable>
-                      <Pressable style={[styles.actionButton, dynamicStyles.actionButton]}>
-                        <Ionicons name="create" size={18} color="#2196F3" />
+                      <Pressable style={[styles.actionButton, { backgroundColor: '#2196F3' }]}>
+                        <Ionicons name="create" size={18} color="#FFF" />
                       </Pressable>
-                      <Pressable style={[styles.actionButton, dynamicStyles.actionButton]} onPress={() => handleDeleteUser(user.id)}>
-                        <Ionicons name="trash" size={18} color="#F44336" />
+                      <Pressable style={[styles.actionButton, { backgroundColor: '#F44336' }]} onPress={() => handleDeleteUser(user.id)}>
+                        <Ionicons name="trash" size={18} color="#FFF" />
                       </Pressable>
                     </View>
-                    <Text style={[styles.actionHint, { 
-                      color: isDarkMode ? "#666" : "#999",
-                      textAlign: "center",
-                      marginTop: spacing.tiny,
-                      fontSize: fontSize.tiny
-                    }]}>
-                      {user.status === 'Active' ? 'Click to deactivate' : 'Click to activate'} • Edit • Delete
-                    </Text>
+                    {/* Removed problematic actionHint text for cleaner display */}
                   </View>
                 </View>
               )
@@ -778,14 +787,21 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.large,
     paddingBottom: spacing.huge,
+    maxWidth: 1200,
+    alignSelf: "center",
+    width: "100%",
   },
   searchContainer: {
     flexDirection: "row",
     marginBottom: spacing.large,
     gap: spacing.medium,
+    flexWrap: "wrap",
+    alignItems: "center",
   },
   searchInputContainer: {
     flex: 1,
+    minWidth: 200,
+    maxWidth: 400,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFF",
@@ -805,6 +821,9 @@ const styles = StyleSheet.create({
   addButton: {
     borderRadius: borderRadius.large,
     overflow: "hidden",
+    minWidth: 120,
+    maxWidth: 200,
+    flexShrink: 0,
     ...getShadow(4),
   },
   addButtonGradient: {
@@ -820,6 +839,7 @@ const styles = StyleSheet.create({
   },
   usersContainer: {
     marginBottom: spacing.xxxLarge,
+    width: "100%",
   },
   userCard: {
     backgroundColor: "#FFF",
@@ -828,13 +848,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.medium,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    minHeight: 120,
+    width: "100%",
     ...getShadow(4),
   },
   userInfo: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
+    marginRight: spacing.medium,
+    minWidth: 0,
   },
   userAvatar: {
     width: 50,
@@ -844,6 +868,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.medium,
+    flexShrink: 0,
   },
   userInitial: {
     color: "#FFF",
@@ -852,26 +877,39 @@ const styles = StyleSheet.create({
   },
   userDetails: {
     flex: 1,
+    minWidth: 0, // Allows text to wrap properly
+    flexShrink: 1,
   },
   userName: {
     fontSize: fontSize.large,
     fontWeight: "600",
     color: "#333",
     marginBottom: spacing.tiny,
+    flexShrink: 1,
   },
   userEmail: {
     fontSize: fontSize.small,
     color: "#666",
     marginBottom: spacing.small,
+    flexShrink: 1,
+  },
+  userProject: {
+    fontSize: fontSize.tiny,
+    color: "#888",
+    marginBottom: spacing.small,
+    flexShrink: 1,
   },
   userMeta: {
     flexDirection: "row",
     gap: spacing.small,
+    flexWrap: "wrap",
+    alignItems: "center",
   },
   roleBadge: {
     paddingHorizontal: spacing.small,
     paddingVertical: spacing.tiny,
     borderRadius: borderRadius.medium,
+    flexShrink: 0,
   },
   roleText: {
     color: "#FFF",
@@ -882,19 +920,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.small,
     paddingVertical: spacing.tiny,
     borderRadius: borderRadius.medium,
+    flexShrink: 0,
   },
   statusText: {
     color: "#FFF",
     fontSize: fontSize.tiny,
     fontWeight: "600",
   },
+  adminCreatedBadge: {
+    paddingHorizontal: spacing.small,
+    paddingVertical: spacing.tiny,
+    borderRadius: borderRadius.medium,
+    flexShrink: 0,
+  },
   userActions: {
     alignItems: "flex-end",
+    minWidth: 120,
+    flexShrink: 0,
+    alignSelf: "flex-start",
+    paddingTop: spacing.tiny,
   },
   lastLogin: {
-    fontSize: fontSize.tiny,
-    color: "#999",
+    fontSize: fontSize.small,
+    color: "#666",
     marginBottom: spacing.small,
+    textAlign: "right",
+    flexShrink: 0,
+    fontWeight: "500",
   },
   actionButtons: {
     flexDirection: "row",
@@ -902,35 +954,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.small,
     marginTop: spacing.small,
-    marginBottom: spacing.tiny,
+    flexWrap: "wrap",
   },
   actionButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    flexShrink: 0,
+    ...getShadow(2),
   },
-  actionHint: {
-    fontSize: fontSize.tiny,
-    color: "#999",
-    marginTop: spacing.tiny,
-    textAlign: "right",
-  },
+  // Removed actionHint style - no longer needed
   statsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.medium,
   },
   statCard: {
     flex: 1,
+    minWidth: 100,
     backgroundColor: "#FFF",
     padding: spacing.large,
     borderRadius: borderRadius.large,
     alignItems: "center",
-    marginHorizontal: spacing.tiny,
     ...getShadow(4),
   },
   statNumber: {
@@ -961,6 +1009,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: borderRadius.large,
     width: '90%',
+    maxWidth: 600,
     maxHeight: '80%',
     ...getShadow(10),
   },
@@ -987,9 +1036,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.medium,
     marginBottom: spacing.large,
+    flexWrap: 'wrap',
   },
   formColumn: {
     flex: 1,
+    minWidth: 200,
   },
   inputLabel: {
     fontSize: fontSize.small,

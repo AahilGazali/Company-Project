@@ -10,6 +10,8 @@ import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisSe
 import ChartDataService from '../services/chartDataService';
 import DashboardStorageService from '../services/dashboardStorageService';
 import ResponsiveTable from '../components/ResponsiveTable';
+import { useUser } from '../contexts/UserContext';
+import { getUserID } from '../utils/userUtils';
 import { 
   spacing, 
   fontSize, 
@@ -22,6 +24,7 @@ import {
 const initialPrograms: Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }> = [];
 
 export default function DatabaseScreen() {
+  const { user, isAdminCreatedUser, isAuthenticated } = useUser();
   const [isImporting, setIsImporting] = useState(false);
   const [showRCM, setShowRCM] = useState(false);
   const [programs, setPrograms] = useState<Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }>>([]);
@@ -37,12 +40,12 @@ export default function DatabaseScreen() {
   // Load RCM data from Firestore when RCM is shown
   useEffect(() => {
     const fetchRCM = async () => {
-      if (!showRCM) return;
+      if (!showRCM || !user || !isAuthenticated) return;
       setLoadingRCM(true);
       try {
-        const user = auth.currentUser;
-        if (!user) return;
-        const docRef = doc(db, 'rcmPrograms', user.uid);
+        const userId = getUserID(user, isAdminCreatedUser);
+        if (!userId) return;
+        const docRef = doc(db, 'rcmPrograms', userId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const existingPrograms = docSnap.data().programs || [];
@@ -72,20 +75,25 @@ export default function DatabaseScreen() {
       }
     };
     fetchRCM();
-  }, [showRCM]);
+  }, [showRCM, user, isAuthenticated]);
 
   // Load imported files when component mounts
   useEffect(() => {
-    loadImportedFiles();
-  }, []);
+    // Only load files if user is authenticated
+    if (user && isAuthenticated) {
+      loadImportedFiles();
+    }
+  }, [user, isAuthenticated]);
 
   const loadImportedFiles = async () => {
     try {
       setLoadingFiles(true);
-      const user = auth.currentUser;
-      if (!user) return;
+      if (!user || !isAuthenticated) return;
       
-      const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) return;
+      
+      const files = await ImportedFilesService.getUserImportedFiles(userId);
       setImportedFiles(files);
     } catch (error) {
       console.error('Error loading imported files:', error);
@@ -97,9 +105,12 @@ export default function DatabaseScreen() {
   // Save RCM data to Firestore
   const saveRCMToFirestore = async (updatedPrograms: typeof programs) => {
     try {
-      const user = auth.currentUser;
-      if (!user) return;
-      const docRef = doc(db, 'rcmPrograms', user.uid);
+      if (!user || !isAuthenticated) return;
+      
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) return;
+      
+      const docRef = doc(db, 'rcmPrograms', userId);
       await setDoc(docRef, { programs: updatedPrograms });
     } catch (e) {
       Alert.alert('Error', 'Failed to save data to server.');
@@ -136,9 +147,14 @@ export default function DatabaseScreen() {
       }
 
       // Upload file to Firebase Storage
-      const user = auth.currentUser;
-      if (!user) {
+      if (!user || !isAuthenticated) {
         Alert.alert('Error', 'Please login to upload files.');
+        return;
+      }
+      
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) {
+        Alert.alert('Error', 'Unable to identify user. Please try logging in again.');
         return;
       }
 
@@ -155,7 +171,7 @@ export default function DatabaseScreen() {
 
       const uploadResult = await StorageService.uploadDocument(
         blob,
-        user.uid,
+        userId,
         file.name
       );
 
@@ -168,7 +184,7 @@ export default function DatabaseScreen() {
             fileUrl: uploadResult.url!,
             fileSize: file.size || 0,
             fileType: file.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            userId: user.uid,
+            userId: userId,
             status: 'uploaded' as const,
             description: 'Excel file imported via DatabaseScreen'
           };
@@ -201,7 +217,7 @@ export default function DatabaseScreen() {
                 const dashboardId = await DashboardStorageService.saveDashboard(
                   savedFileId,
                   file.name,
-                  user.uid,
+                  userId,
                   dashboardData
                 );
                               console.log('✅ Dashboard generated and saved successfully with ID:', dashboardId);
@@ -211,7 +227,7 @@ export default function DatabaseScreen() {
               console.log('🔍 Dashboard verification:', dashboardExists ? '✅ Found' : '❌ Not found');
               
               // Get total dashboard count for user
-              const dashboardCount = await DashboardStorageService.getUserDashboardCount(user.uid);
+              const dashboardCount = await DashboardStorageService.getUserDashboardCount(userId);
               console.log('📊 Total dashboards for user:', dashboardCount);
             } catch (saveError: any) {
               console.error('❌ Error saving dashboard to Firestore:', saveError);

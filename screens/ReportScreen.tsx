@@ -5,9 +5,12 @@ import { auth } from '../firebaseConfig';
 import DashboardStorageService, { StoredDashboard } from '../services/dashboardStorageService';
 import ImportedFilesService from '../services/importedFilesService';
 import DashboardCharts from '../components/DashboardCharts';
+import { useUser } from '../contexts/UserContext';
+import { getUserID } from '../utils/userUtils';
 import { spacing, fontSize, isTablet, borderRadius, getShadow } from '../utils/responsive';
 
 export default function ReportsScreen() {
+  const { user, isAdminCreatedUser } = useUser();
   const [dashboards, setDashboards] = useState<StoredDashboard[]>([]);
   const [selectedDashboard, setSelectedDashboard] = useState<StoredDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,15 +19,17 @@ export default function ReportsScreen() {
   // Load user dashboards
   const loadDashboards = async () => {
     try {
-      const user = auth.currentUser;
       if (!user) return;
+      
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) return;
 
       console.log('📊 Loading user dashboards...');
       
       // Try to get user dashboards directly - if this fails, we'll handle it gracefully
       let userDashboards: StoredDashboard[] = [];
       try {
-        userDashboards = await DashboardStorageService.getUserDashboards(user.uid);
+        userDashboards = await DashboardStorageService.getUserDashboards(userId);
         console.log('✅ Successfully loaded user dashboards');
       } catch (error: any) {
         if (error.code === 'permission-denied' || error.message?.includes('permission')) {

@@ -24,6 +24,8 @@ import ChatInterface from '../components/ChatInterface';
 import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
 import { ImportedFile, ImportedFilesService } from '../services/importedFilesService';
 import GeminiService from '../services/geminiService';
+import { useUser } from '../contexts/UserContext';
+import { getUserID } from '../utils/userUtils';
 import { 
   spacing, 
   fontSize, 
@@ -39,6 +41,7 @@ import {
 } from '../utils/responsive';
 
 export default function QueryScreen() {
+  const { user, isAdminCreatedUser, isAuthenticated } = useUser();
   const [queryText, setQueryText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -50,15 +53,20 @@ export default function QueryScreen() {
   // Load the latest imported Excel file for data context
   const loadLatestExcelFile = async () => {
     try {
-      const user = auth.currentUser;
-      if (!user) {
+      if (!user || !isAuthenticated) {
+        setLoadingLatestFile(false);
+        return;
+      }
+      
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) {
         setLoadingLatestFile(false);
         return;
       }
 
       console.log('🔍 Loading latest Excel file for QueryScreen...');
       setLoadingLatestFile(true);
-      const files = await ImportedFilesService.getUserImportedFiles(user.uid);
+      const files = await ImportedFilesService.getUserImportedFiles(userId);
       
       if (files.length > 0) {
         // Get the most recent file
@@ -110,15 +118,19 @@ export default function QueryScreen() {
 
   // Load latest file on component mount
   useEffect(() => {
-    loadLatestExcelFile();
-  }, []);
+    if (user && isAuthenticated) {
+      loadLatestExcelFile();
+    }
+  }, [user, isAuthenticated]);
 
   // Refresh latest file whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 QueryScreen focused, refreshing latest file...');
-      loadLatestExcelFile();
-    }, [])
+      if (user && isAuthenticated) {
+        console.log('🔄 QueryScreen focused, refreshing latest file...');
+        loadLatestExcelFile();
+      }
+    }, [user, isAuthenticated])
   );
 
   // Retry analysis function
