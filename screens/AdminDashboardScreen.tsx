@@ -170,13 +170,13 @@ export default function AdminDashboardScreen() {
     const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
     
     if (diffInMinutes < 1) return "Just now"
-    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
     
     const diffInHours = Math.floor(diffInMinutes / 60)
-    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+    if (diffInHours < 24) return `${diffInHours}h ago`
     
     const diffInDays = Math.floor(diffInHours / 24)
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+    return `${diffInDays}d ago`
   }
 
   const statsData = [
@@ -190,14 +190,6 @@ export default function AdminDashboardScreen() {
       gradient: ["#4CAF50", "#2E7D32"] as const
     },
     {
-      title: "Active Programs",
-      value: programs.filter(p => p.status === "Active").length.toString(),
-      change: programs.length > 0 ? `${programs.length} total` : "No programs",
-      icon: "list",
-      color: "#2196F3",
-      gradient: ["#2196F3", "#1976D2"] as const
-    },
-    {
       title: "Active Users",
       value: users.filter(u => u.status === "Active").length.toString(),
       change: users.filter(u => u.status === "Inactive").length > 0 ? 
@@ -205,33 +197,15 @@ export default function AdminDashboardScreen() {
       icon: "checkmark-circle",
       color: "#FF9800",
       gradient: ["#FF9800", "#F57C00"] as const
-    },
-    {
-      title: "System Health",
-      value: users.length > 0 ? `${Math.round((users.filter(u => u.status === "Active").length / users.length) * 100)}%` : "100%",
-      change: users.length > 0 ? `${users.filter(u => u.status === "Active").length}/${users.length} users` : "No users",
-      icon: "shield-checkmark",
-      color: "#4CAF50",
-      gradient: ["#4CAF50", "#2E7D32"] as const
     }
   ]
 
-  const quickActions = [
-    { title: "Generate Report", icon: "document-text", color: "#2196F3" },
-    { title: "System Settings", icon: "settings", color: "#FF9800" },
-    { title: "View Logs", icon: "list", color: "#9C27B0" }
-  ]
+
 
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
       backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
-    },
-    actionCard: {
-      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
-    },
-    actionTitle: {
-      color: isDarkMode ? "#FFFFFF" : "#333",
     },
     activityCard: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
@@ -323,20 +297,7 @@ export default function AdminDashboardScreen() {
               ))}
             </View>
 
-            {/* Quick Actions */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Quick Actions</Text>
-              <View style={styles.quickActionsGrid}>
-                {quickActions.map((action, index) => (
-                  <Pressable key={index} style={[styles.actionCard, dynamicStyles.actionCard]}>
-                    <View style={[styles.actionIcon, { backgroundColor: action.color }]}>
-                      <Ionicons name={action.icon as any} size={24} color="#FFF" />
-                    </View>
-                    <Text style={[styles.actionTitle, dynamicStyles.actionTitle]}>{action.title}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+
 
             {/* Recent Activity */}
             <View style={styles.section}>
@@ -515,34 +476,7 @@ const styles = StyleSheet.create({
     color: "#2E7D32",
     marginBottom: spacing.large,
   },
-  quickActionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  actionCard: {
-    width: (width - spacing.large * 3) / 2,
-    backgroundColor: "#FFF",
-    padding: spacing.large,
-    borderRadius: borderRadius.large,
-    alignItems: "center",
-    marginBottom: spacing.large,
-    ...getShadow(4),
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.medium,
-  },
-  actionTitle: {
-    fontSize: fontSize.medium,
-    fontWeight: "600",
-    color: "#333",
-    textAlign: "center",
-  },
+
   activityCard: {
     backgroundColor: "#FFF",
     borderRadius: borderRadius.large,

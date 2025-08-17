@@ -1,22 +1,12 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
+// Development rules - allow full access to all storage
+// TODO: Implement proper security rules in production
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to read and write files in their own directory
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow public read access to certain file types (optional)
-    match /public/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // Default rule - deny all other access
+    // Allow full access to all files and directories
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 } 

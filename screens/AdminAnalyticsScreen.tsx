@@ -128,22 +128,12 @@ export default function AdminAnalyticsScreen() {
         return false
       }).length
 
-      // Count programs created in this month
-      const monthPrograms = programs.filter(program => {
-        if (program.createdAt) {
-          const programDate = program.createdAt.toDate ? program.createdAt.toDate() : new Date(program.createdAt)
-          return programDate.getMonth() === monthIndex && programDate.getFullYear() === currentYear
-        }
-        return false
-      }).length
-
       // Generate random reports for demonstration (you can replace this with real data)
       const monthReports = Math.floor(Math.random() * 10) + 5
 
       chartData.push({
         month,
         users: monthUsers,
-        programs: monthPrograms,
         reports: monthReports
       })
     }
@@ -153,7 +143,6 @@ export default function AdminAnalyticsScreen() {
 
   const chartData = generateChartData()
   const maxUsers = Math.max(...chartData.map(d => d.users), 1)
-  const maxPrograms = Math.max(...chartData.map(d => d.programs), 1)
   const maxReports = Math.max(...chartData.map(d => d.reports), 1)
 
   // Calculate real metrics
@@ -163,18 +152,7 @@ export default function AdminAnalyticsScreen() {
   const totalPrograms = programs.length
   const activePrograms = programs.filter(p => p.status === "Active").length
 
-  // Calculate growth rate based on recent user registrations
-  const recentUsers = users.filter(user => {
-    if (user.createdAt) {
-      const userDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt)
-      const daysAgo = (new Date().getTime() - userDate.getTime()) / (1000 * 60 * 60 * 24)
-      return daysAgo <= 30 // Last 30 days
-    }
-    return false
-  }).length
 
-  const growthRate = totalUsers > 0 ? ((recentUsers / totalUsers) * 100).toFixed(1) : "0.0"
-  const uptime = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : "100.0"
 
   // Dynamic styles based on dark mode
   const dynamicStyles = {
@@ -239,39 +217,7 @@ export default function AdminAnalyticsScreen() {
           </View>
         ) : (
           <>
-            {/* Key Metrics */}
-            <View style={styles.metricsContainer}>
-              <View style={styles.metricCard}>
-                <LinearGradient
-                  colors={["#4CAF50", "#2E7D32"]}
-                  style={styles.metricGradient}
-                >
-                  <Ionicons name="trending-up" size={24} color="#FFF" />
-                  <Text style={styles.metricValue}>+{growthRate}%</Text>
-                  <Text style={styles.metricLabel}>Growth Rate (30d)</Text>
-                </LinearGradient>
-              </View>
-              <View style={styles.metricCard}>
-                <LinearGradient
-                  colors={["#2196F3", "#1976D2"]}
-                  style={styles.metricGradient}
-                >
-                  <Ionicons name="people" size={24} color="#FFF" />
-                  <Text style={styles.metricValue}>{totalUsers}</Text>
-                  <Text style={styles.metricLabel}>Total Users</Text>
-                </LinearGradient>
-              </View>
-              <View style={styles.metricCard}>
-                <LinearGradient
-                  colors={["#FF9800", "#F57C00"]}
-                  style={styles.metricGradient}
-                >
-                  <Ionicons name="analytics" size={24} color="#FFF" />
-                  <Text style={styles.metricValue}>{uptime}%</Text>
-                  <Text style={styles.metricLabel}>System Uptime</Text>
-                </LinearGradient>
-              </View>
-            </View>
+
 
             {/* Chart Section */}
             <View style={styles.chartSection}>
@@ -281,10 +227,6 @@ export default function AdminAnalyticsScreen() {
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: "#4CAF50" }]} />
                     <Text style={[styles.legendText, dynamicStyles.legendText]}>Users</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: "#2196F3" }]} />
-                    <Text style={[styles.legendText, dynamicStyles.legendText]}>Programs</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
@@ -299,10 +241,6 @@ export default function AdminAnalyticsScreen() {
                         <View style={[styles.bar, { 
                           height: (data.users / maxUsers) * 120, 
                           backgroundColor: "#4CAF50" 
-                        }]} />
-                        <View style={[styles.bar, { 
-                          height: (data.programs / maxPrograms) * 120, 
-                          backgroundColor: "#2196F3" 
                         }]} />
                         <View style={[styles.bar, { 
                           height: (data.reports / maxReports) * 120, 
@@ -331,38 +269,7 @@ export default function AdminAnalyticsScreen() {
                   </Text>
                 </View>
                 
-                <View style={[styles.performanceCard, dynamicStyles.performanceCard]}>
-                  <View style={styles.performanceHeader}>
-                    <Ionicons name="server" size={24} color="#2196F3" />
-                    <Text style={[styles.performanceTitle, dynamicStyles.performanceTitle]}>Program Status</Text>
-                  </View>
-                  <Text style={styles.performanceValue}>{activePrograms}</Text>
-                  <Text style={[styles.performanceChange, dynamicStyles.performanceChange]}>
-                    {totalPrograms > 0 ? `${totalPrograms} total programs` : "No programs"}
-                  </Text>
-                </View>
-                
-                <View style={[styles.performanceCard, dynamicStyles.performanceCard]}>
-                  <View style={styles.performanceHeader}>
-                    <Ionicons name="shield-checkmark" size={24} color="#FF9800" />
-                    <Text style={[styles.performanceTitle, dynamicStyles.performanceTitle]}>Security Score</Text>
-                  </View>
-                  <Text style={styles.performanceValue}>{Math.round((activeUsers / Math.max(totalUsers, 1)) * 100)}/100</Text>
-                  <Text style={[styles.performanceChange, dynamicStyles.performanceChange]}>
-                    {totalUsers > 0 ? `${activeUsers}/${totalUsers} active` : "No users"}
-                  </Text>
-                </View>
-                
-                <View style={[styles.performanceCard, dynamicStyles.performanceCard]}>
-                  <View style={styles.performanceHeader}>
-                    <Ionicons name="cloud" size={24} color="#9C27B0" />
-                    <Text style={[styles.performanceTitle, dynamicStyles.performanceTitle]}>Data Health</Text>
-                  </View>
-                  <Text style={styles.performanceValue}>{totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 100}%</Text>
-                  <Text style={[styles.performanceChange, dynamicStyles.performanceChange]}>
-                    {totalUsers > 0 ? `${activeUsers}/${totalUsers} users` : "No users"}
-                  </Text>
-                </View>
+
               </View>
             </View>
           </>
@@ -418,33 +325,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.medium,
     color: "#666",
   },
-  metricsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.xxxLarge,
-  },
-  metricCard: {
-    flex: 1,
-    marginHorizontal: spacing.tiny,
-    borderRadius: borderRadius.large,
-    overflow: "hidden",
-    ...getShadow(8),
-  },
-  metricGradient: {
-    padding: spacing.large,
-    alignItems: "center",
-  },
-  metricValue: {
-    fontSize: fontSize.xxxLarge,
-    fontWeight: "bold",
-    color: "#FFF",
-    marginVertical: spacing.small,
-  },
-  metricLabel: {
-    fontSize: fontSize.small,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-  },
+
   chartSection: {
     marginBottom: spacing.xxxLarge,
   },

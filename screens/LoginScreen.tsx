@@ -15,10 +15,10 @@ import {
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
-import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth, db } from "../firebaseConfig"
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { useUser } from "../contexts/UserContext"
+import { UserAuthService } from "../services/userAuthService"
 import { 
   spacing, 
   fontSize, 
@@ -45,71 +45,53 @@ export default function LoginScreen({ navigation }: any) {
     try {
       const trimmedEmail = email.trim()
       
-      // Use Firebase Auth for all users (both self-registered and admin-created)
-      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password)
-      const firebaseUser = userCredential.user
+      // Use custom authentication system that reads from Firestore
+      const userData = await UserAuthService.authenticateUser({
+        email: trimmedEmail,
+        password: password
+      })
       
-      // Get user data from Firestore
-      try {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        if (userDoc.exists()) {
-          const userData = userDoc.data()
-          
-          // Check if user account is deactivated
-          if (userData.status === 'Inactive') {
-            Alert.alert(
-              "Account Deactivated", 
-              "Your account has been deactivated. Please contact administrator for assistance.",
-              [{ text: "OK" }]
-            )
-            // Sign out the user since they can't access the app
-            await auth.signOut()
-            return
-          }
-          
-          // Update lastLogin timestamp
-          try {
-            await updateDoc(doc(db, 'users', firebaseUser.uid), {
-              lastLogin: serverTimestamp()
-            })
-          } catch (updateError) {
-            console.error('Error updating lastLogin:', updateError)
-            // Continue with login even if timestamp update fails
-          }
-          
-          // Store user data in context
+      if (userData) {
+        // Check if user account is deactivated
+        if (userData.status === 'Inactive') {
+          Alert.alert(
+            "Account Deactivated", 
+            "Your account has been deactivated. Please contact administrator for assistance.",
+            [{ text: "OK" }]
+          )
+          return
+        }
+        
+        // Get complete user data to ensure all fields are loaded
+        const completeUserData = await UserAuthService.getCompleteUserData(userData.id)
+        
+        if (completeUserData) {
+          // Store complete user data in context
           const user = {
-            id: firebaseUser.uid,
-            fullName: userData.fullName,
-            email: userData.email,
-            projectName: userData.projectName,
-            employeeId: userData.employeeId,
-            role: userData.role,
-            status: userData.status,
-            lastLogin: serverTimestamp(), // Use current timestamp
-            createdAt: userData.createdAt,
-            isAdminCreated: userData.isAdminCreated
+            id: completeUserData.id,
+            fullName: completeUserData.fullName,
+            email: completeUserData.email,
+            projectName: completeUserData.projectName,
+            employeeId: completeUserData.employeeId,
+            role: completeUserData.role,
+            status: completeUserData.status,
+            lastLogin: new Date(), // Use current timestamp
+            createdAt: completeUserData.createdAt,
+            isAdminCreated: completeUserData.isAdminCreated
           }
           await setUser(user)
           Alert.alert("Success", `Welcome back, ${user.fullName}!`)
           navigation.replace("Home")
         } else {
-          Alert.alert("Error", "User data not found. Please contact administrator.")
+          Alert.alert("Error", "Failed to load complete user data. Please try again.")
         }
-      } catch (firestoreError) {
-        console.error("Error fetching user data:", firestoreError)
-        Alert.alert("Error", "Failed to load user data. Please try again.")
+      } else {
+        Alert.alert("Error", "Invalid email or password. Please try again.")
       }
     } catch (error: any) {
       console.error("Login error:", error)
-      if (error.code === 'auth/user-not-found') {
-        Alert.alert("Error", "No user found with this email address.")
-      } else if (error.code === 'auth/wrong-password') {
-        Alert.alert("Error", "Incorrect password. Please try again.")
-      } else if (error.code === 'auth/user-disabled') {
-        Alert.alert("Error", "This account has been disabled. Please contact administrator.")
-      } else if (error.code === 'auth/invalid-email') {
-        Alert.alert("Error", "Please enter a valid email address.")
+      if (error.message === "User account is not active") {
+        Alert.alert("Error", "Your account has been deactivated. Please contact administrator for assistance.")
       } else {
         Alert.alert("Error", "Login failed. Please check your credentials and try again.")
       }

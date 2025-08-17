@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { db, auth } from "../firebaseConfig"
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore"
 import { createUserWithEmailAndPassword } from "firebase/auth"
+import { UserAuthService } from "../services/userAuthService"
 import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
@@ -35,19 +36,40 @@ interface User {
   lastLogin: string | null
   createdAt: any
   isAdminCreated?: boolean
+  password?: string
 }
 
 export default function AdminUsersScreen() {
   const { isDarkMode } = useTheme()
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [addUserModalVisible, setAddUserModalVisible] = useState<boolean>(false)
+  const [editUserModalVisible, setEditUserModalVisible] = useState<boolean>(false)
   const [isAddingUser, setIsAddingUser] = useState<boolean>(false)
+  const [isEditingUser, setIsEditingUser] = useState<boolean>(false)
   const [users, setUsers] = useState<User[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true)
   const [refreshing, setRefreshing] = useState<boolean>(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   
   // Form state
   const [formData, setFormData] = useState<{
+    fullName: string
+    projectName: string
+    employeeId: string
+    email: string
+    password: string
+    confirmPassword: string
+  }>({
+    fullName: "",
+    projectName: "",
+    employeeId: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  })
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState<{
     fullName: string
     projectName: string
     employeeId: string
@@ -83,11 +105,17 @@ export default function AdminUsersScreen() {
           status: userData.status || "Active",
           lastLogin: userData.lastLogin || "Never",
           createdAt: userData.createdAt,
-          isAdminCreated: userData.isAdminCreated || false
+          isAdminCreated: userData.isAdminCreated || false,
+          password: userData.password || ""
         })
       })
       
       setUsers(fetchedUsers)
+      
+      // Clean up conflicting password fields for all users after they're loaded
+      for (const user of fetchedUsers) {
+        await cleanupUserPasswordFields(user.id)
+      }
     } catch (error) {
       console.error("Error fetching users:", error)
       Alert.alert("Error", "Failed to fetch users. Please try again.")
@@ -233,6 +261,12 @@ export default function AdminUsersScreen() {
       // Use the Firebase UID as the document ID
       await setDoc(doc(db, "users", firebaseUser.uid), userData)
       
+      // Also store the password in Firestore for the custom auth system
+      await updateDoc(doc(db, "users", firebaseUser.uid), {
+        password: formData.password,
+        lastPasswordChange: serverTimestamp()
+      })
+      
       Alert.alert("Success", "User added successfully!")
       setAddUserModalVisible(false)
       resetForm()
@@ -284,6 +318,147 @@ export default function AdminUsersScreen() {
     } catch (error) {
       console.error("Error opening add user modal:", error)
       Alert.alert("Error", "Failed to open add user modal. Please try again.")
+    }
+  }
+
+  const openEditUserModal = (user: User) => {
+    try {
+      setEditingUser(user)
+      setEditFormData({
+        fullName: user.fullName || "",
+        projectName: user.projectName || "",
+        employeeId: user.employeeId || "",
+        email: user.email || "",
+        password: "",
+        confirmPassword: ""
+      })
+      setEditUserModalVisible(true)
+    } catch (error) {
+      console.error("Error opening edit user modal:", error)
+      Alert.alert("Error", "Failed to open edit user modal. Please try again.")
+    }
+  }
+
+  const handleEditUser = async () => {
+    // Validate form data
+    if (!editFormData.fullName || !editFormData.email) {
+      Alert.alert("Error", "Please fill in all required fields")
+      return
+    }
+    
+    if (editFormData.password && editFormData.password !== editFormData.confirmPassword) {
+      Alert.alert("Error", "Passwords do not match")
+      return
+    }
+    
+    if (editFormData.password && editFormData.password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long")
+      return
+    }
+    
+    if (!editingUser) {
+      Alert.alert("Error", "No user selected for editing")
+      return
+    }
+    
+    try {
+      setIsEditingUser(true)
+      
+      // Check if email is being changed
+      const emailChanged = editFormData.email.trim().toLowerCase() !== editingUser.email.toLowerCase()
+      
+      // Update user data in Firestore
+      const updateData: any = {
+        fullName: editFormData.fullName.trim(),
+        email: editFormData.email.trim().toLowerCase(),
+        projectName: editFormData.projectName.trim(),
+        employeeId: editFormData.employeeId.trim(),
+      }
+      
+      // Update Firestore first
+      await updateDoc(doc(db, "users", editingUser.id), updateData)
+      
+      // If password is provided, update it in Firestore
+      if (editFormData.password) {
+        try {
+          // Clean up old password fields and update with new password
+          await updateDoc(doc(db, "users", editingUser.id), {
+            ...updateData,
+            password: editFormData.password, // Store the new password
+            passwordUpdatedAt: serverTimestamp(),
+            lastPasswordChange: serverTimestamp(),
+            // Remove conflicting fields
+            newPassword: null,
+            passwordUpdateRequired: null
+          })
+          
+          Alert.alert(
+            "Success", 
+            "User data and password updated successfully! User can now login with new credentials.",
+            [{ text: "OK" }]
+          )
+        } catch (passwordError) {
+          console.error("Error updating password:", passwordError)
+          Alert.alert(
+            "Partial Success", 
+            "User data updated, but password change failed. Please try updating the password again.",
+            [{ text: "OK" }]
+          )
+        }
+      } else {
+        Alert.alert("Success", "User updated successfully!")
+      }
+      
+      setEditUserModalVisible(false)
+      resetEditForm()
+      fetchUsers() // Refresh the users list
+    } catch (error: any) {
+      console.error("Error updating user:", error)
+      Alert.alert("Error", "Failed to update user. Please try again.")
+    } finally {
+      setIsEditingUser(false)
+    }
+  }
+
+  const resetEditForm = () => {
+    try {
+      setEditFormData({
+        fullName: "",
+        projectName: "",
+        employeeId: "",
+        email: "",
+        password: "",
+        confirmPassword: ""
+      })
+      setEditingUser(null)
+    } catch (error) {
+      console.error("Error resetting edit form:", error)
+      // Fallback reset
+      setEditFormData({
+        fullName: "",
+        projectName: "",
+        employeeId: "",
+        email: "",
+        password: "",
+        confirmPassword: ""
+      })
+      setEditingUser(null)
+    }
+  }
+
+  // Function to clean up conflicting password fields for existing users
+  const cleanupUserPasswordFields = async (userId: string) => {
+    try {
+      // Use deleteField to completely remove the conflicting fields
+      const { deleteField } = await import('firebase/firestore')
+      await updateDoc(doc(db, "users", userId), {
+        newPassword: deleteField(),
+        passwordUpdateRequired: deleteField(),
+        passwordUpdatedAt: deleteField()
+      })
+      console.log(`Cleaned up password fields for user: ${userId}`)
+    } catch (error) {
+      console.error("Error cleaning up password fields:", error)
     }
   }
 
@@ -562,7 +737,10 @@ export default function AdminUsersScreen() {
                           color="#FFF" 
                         />
                       </Pressable>
-                      <Pressable style={[styles.actionButton, { backgroundColor: '#2196F3' }]}>
+                      <Pressable 
+                        style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+                        onPress={() => openEditUserModal(user)}
+                      >
                         <Ionicons name="create" size={18} color="#FFF" />
                       </Pressable>
                       <Pressable style={[styles.actionButton, { backgroundColor: '#F44336' }]} onPress={() => handleDeleteUser(user.id)}>
@@ -734,6 +912,178 @@ export default function AdminUsersScreen() {
                       <ActivityIndicator color="#FFF" size="small" />
                     ) : (
                       <Text style={styles.addUserButtonText}>Add User</Text>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        visible={editUserModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditUserModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <LinearGradient
+              colors={dynamicStyles.modalHeaderColors}
+              style={styles.modalHeader}
+            >
+              <Text style={styles.modalTitle}>Edit User</Text>
+              <Pressable 
+                style={styles.closeButton} 
+                onPress={() => setEditUserModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#FFF" />
+              </Pressable>
+            </LinearGradient>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formRow}>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Full Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
+                    value={editFormData.fullName || ""}
+                    onChangeText={(text) => setEditFormData({...editFormData, fullName: text || ""})}
+                    placeholder="Enter full name"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Project Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
+                    value={editFormData.projectName || ""}
+                    onChangeText={(text) => setEditFormData({...editFormData, projectName: text || ""})}
+                    placeholder="Enter project name"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Employee ID</Text>
+                  <TextInput
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
+                    value={editFormData.employeeId || ""}
+                    onChangeText={(text) => setEditFormData({...editFormData, employeeId: text || ""})}
+                    placeholder="Enter employee ID"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Email</Text>
+                    <TextInput
+                      style={[styles.modalInput, dynamicStyles.modalInput]}
+                      value={editFormData.email || ""}
+                      onChangeText={(text) => setEditFormData({...editFormData, email: text || ""})}
+                      placeholder="Enter email"
+                      placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                </View>
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>New Password (Optional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
+                    value={editFormData.password || ""}
+                    onChangeText={(text) => setEditFormData({...editFormData, password: text || ""})}
+                    placeholder="Leave blank to keep current password"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                    secureTextEntry
+                  />
+                </View>
+                <View style={styles.formColumn}>
+                  <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Confirm New Password</Text>
+                  <TextInput
+                    style={[styles.modalInput, dynamicStyles.modalInput]}
+                    value={editFormData.confirmPassword || ""}
+                    onChangeText={(text) => setEditFormData({...editFormData, confirmPassword: text || ""})}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={isDarkMode ? "#666" : "#999"}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+              
+              {/* Password change note */}
+              {editFormData.password && (
+                <View style={styles.passwordNote}>
+                  <Text style={[styles.passwordNoteText, { color: isDarkMode ? "#FF9800" : "#F57C00" }]}>
+                    Note: Password changes are applied immediately
+                  </Text>
+                </View>
+              )}
+              
+              {/* Cleanup button for existing users with conflicting fields */}
+              <View style={styles.cleanupSection}>
+                <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Database Cleanup</Text>
+                <Pressable 
+                  style={styles.cleanupButton}
+                  onPress={async () => {
+                    if (editingUser) {
+                      try {
+                        await cleanupUserPasswordFields(editingUser.id)
+                        Alert.alert("Cleanup", "Conflicting password fields have been cleaned up.")
+                        // Refresh the user data after cleanup
+                        await fetchUsers()
+                      } catch (error) {
+                        Alert.alert("Error", "Failed to clean up password fields.")
+                      }
+                    }
+                  }}
+                >
+                  <Text style={styles.cleanupButtonText}>Clean Password Fields</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <Pressable 
+                  style={[styles.cancelButton, dynamicStyles.cancelButton]}
+                  onPress={() => {
+                    try {
+                      setEditUserModalVisible(false)
+                      resetEditForm()
+                    } catch (error) {
+                      console.error("Error closing edit modal:", error)
+                      setEditUserModalVisible(false)
+                      resetEditForm()
+                    }
+                  }}
+                >
+                  <Text style={[styles.cancelButtonText, dynamicStyles.cancelButtonText]}>Cancel</Text>
+                </Pressable>
+                <Pressable 
+                  style={styles.addUserButton}
+                  onPress={() => {
+                    try {
+                      handleEditUser()
+                    } catch (error) {
+                      console.error("Error handling edit user:", error)
+                      Alert.alert("Error", "Failed to edit user. Please try again.")
+                    }
+                  }}
+                  disabled={isEditingUser}
+                >
+                  <LinearGradient
+                    colors={['#2196F3', '#1976D2']}
+                    style={styles.addUserButtonGradient}
+                  >
+                    {isEditingUser ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <Text style={styles.editUserButtonText}>Update User</Text>
                     )}
                   </LinearGradient>
                 </Pressable>
@@ -1089,5 +1439,44 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: fontSize.medium,
     fontWeight: 'bold',
+  },
+  editUserButtonText: {
+    color: '#FFF',
+    fontSize: fontSize.medium,
+    fontWeight: 'bold',
+  },
+  passwordNote: {
+    marginTop: spacing.medium,
+    padding: spacing.medium,
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    borderRadius: borderRadius.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  passwordNoteText: {
+    fontSize: fontSize.small,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  cleanupSection: {
+    marginTop: spacing.large,
+    padding: spacing.medium,
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    borderRadius: borderRadius.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  cleanupButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+    borderRadius: borderRadius.medium,
+    alignItems: 'center',
+    marginTop: spacing.small,
+  },
+  cleanupButtonText: {
+    color: '#FFF',
+    fontSize: fontSize.small,
+    fontWeight: '600',
   },
 })
