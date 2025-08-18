@@ -8,6 +8,7 @@ import {
   Switch,
   Alert,
   Dimensions,
+  Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
@@ -16,6 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import AdminCredentialsModal from "../components/AdminCredentialsModal"
 import { AdminService } from "../services/adminService"
 import { useTheme } from "../contexts/ThemeContext"
+import CustomHeader from "../components/CustomHeader"
 import { 
   spacing, 
   fontSize, 
@@ -93,7 +95,7 @@ export default function AdminProfileScreen() {
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
-      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#121212" : "#E2EBDD",
     },
     accountCard: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
@@ -126,40 +128,18 @@ export default function AdminProfileScreen() {
       color: isDarkMode ? "#FFFFFF" : "#333",
     },
     settingIcon: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
     },
     settingButton: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
     }
   }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.profileImageContainer}>
-              <View style={styles.profileImage}>
-                <Text style={styles.profileInitial}>A</Text>
-              </View>
-              <View style={styles.onlineIndicator} />
-            </View>
-            <Text style={styles.profileName}>Administrator</Text>
-            <Text style={styles.profileRole}>Super Admin</Text>
-            <Text style={styles.profileEmail}>{adminEmail}</Text>
-          </View>
-        </LinearGradient>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      
+      <View style={styles.contentContainer}>
         {/* Profile Summary */}
         <View style={[styles.profileCard, dynamicStyles.profileCard]}>
           <View style={styles.profileHeader}>
@@ -184,35 +164,35 @@ export default function AdminProfileScreen() {
         <View style={styles.accountSection}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account Details</Text>
           <View style={[styles.accountCard, dynamicStyles.accountCard]}>
-            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
+            <View style={styles.accountRow}>
               <View style={styles.accountLabel}>
                 <Ionicons name="person" size={20} color="#4CAF50" />
                 <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Full Name</Text>
               </View>
               <Text style={[styles.accountValue, dynamicStyles.accountValue]}>Administrator</Text>
             </View>
-            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
+            <View style={styles.accountRow}>
               <View style={styles.accountLabel}>
                 <Ionicons name="mail" size={20} color="#4CAF50" />
                 <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Email</Text>
               </View>
               <Text style={[styles.accountValue, dynamicStyles.accountValue]}>{adminEmail}</Text>
             </View>
-            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
+            <View style={styles.accountRow}>
               <View style={styles.accountLabel}>
                 <Ionicons name="shield" size={20} color="#4CAF50" />
                 <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Role</Text>
               </View>
               <Text style={[styles.accountValue, dynamicStyles.accountValue]}>Super Administrator</Text>
             </View>
-            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
+            <View style={styles.accountRow}>
               <View style={styles.accountLabel}>
                 <Ionicons name="calendar" size={20} color="#4CAF50" />
                 <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Member Since</Text>
               </View>
               <Text style={[styles.accountValue, dynamicStyles.accountValue]}>January 2024</Text>
             </View>
-            <View style={[styles.accountRow, dynamicStyles.accountRow]}>
+            <View style={styles.accountRow}>
               <View style={styles.accountLabel}>
                 <Ionicons name="location" size={20} color="#4CAF50" />
                 <Text style={[styles.accountLabelText, dynamicStyles.accountLabelText]}>Location</Text>
@@ -226,7 +206,7 @@ export default function AdminProfileScreen() {
         <View style={styles.settingsSection}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>System Settings</Text>
           <View style={[styles.accountCard, dynamicStyles.accountCard]}>
-            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
+            <View style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={[styles.settingIcon, dynamicStyles.settingIcon]}>
                   <Ionicons name="moon" size={20} color="#4CAF50" />
@@ -258,7 +238,7 @@ export default function AdminProfileScreen() {
             <Text style={styles.logoutText}>Logout</Text>
           </LinearGradient>
         </Pressable>
-      </ScrollView>
+      </View>
 
       <AdminCredentialsModal
         visible={credentialsModalVisible}
@@ -272,78 +252,19 @@ export default function AdminProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#E2EBDD",
   },
-  header: {
-    height: 200,
-    marginBottom: spacing.large,
-  },
-  headerGradient: {
+  contentContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: spacing.large,
-  },
-  headerContent: {
-    alignItems: "center",
-  },
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: spacing.large,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  profileInitial: {
-    color: "#FFF",
-    fontSize: fontSize.xxxLarge,
-    fontWeight: "bold",
-  },
-  onlineIndicator: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#4CAF50",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  profileName: {
-    color: "#FFF",
-    fontSize: fontSize.xxxLarge,
-    fontWeight: "bold",
-    marginBottom: spacing.tiny,
-  },
-  profileRole: {
-    color: "rgba(255, 255, 255, 0.9)",
-    fontSize: fontSize.large,
-    marginBottom: spacing.tiny,
-  },
-  profileEmail: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: fontSize.medium,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 160 : 140,
     paddingHorizontal: spacing.large,
     paddingBottom: spacing.huge,
   },
   profileCard: {
     backgroundColor: "#FFF",
     borderRadius: borderRadius.large,
-    padding: spacing.large,
-    marginBottom: spacing.xxxLarge,
+    padding: spacing.medium,
+    marginBottom: spacing.large,
     ...getShadow(4),
   },
   profileHeader: {
@@ -351,38 +272,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: spacing.large,
+    marginRight: spacing.medium,
   },
   profileInfo: {
     flex: 1,
   },
   editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
   },
   accountSection: {
-    marginBottom: spacing.xxxLarge,
+    marginBottom: spacing.large,
   },
   sectionTitle: {
     fontSize: fontSize.large,
     fontWeight: "bold",
     color: "#2E7D32",
-    marginBottom: spacing.large,
+    marginBottom: spacing.medium,
   },
   accountCard: {
     backgroundColor: "#FFF",
     borderRadius: borderRadius.large,
-    padding: spacing.large,
+    padding: spacing.medium,
     ...getShadow(4),
   },
   accountRow: {
@@ -398,17 +319,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   accountLabelText: {
-    fontSize: fontSize.medium,
+    fontSize: fontSize.small,
+    fontWeight: "600",
     color: "#666",
     marginLeft: spacing.small,
   },
   accountValue: {
-    fontSize: fontSize.medium,
+    fontSize: fontSize.small,
     color: "#333",
     fontWeight: "600",
   },
   settingsSection: {
-    marginBottom: spacing.xxxLarge,
+    marginBottom: spacing.large,
   },
   settingItem: {
     flexDirection: "row",
@@ -424,16 +346,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.medium,
   },
   settingLabel: {
-    fontSize: fontSize.medium,
+    fontSize: fontSize.small,
     color: "#333",
     flex: 1,
   },
@@ -449,13 +371,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.large,
-    paddingHorizontal: spacing.xxxLarge,
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.large,
   },
   logoutText: {
     color: "#FFF",
     fontWeight: "bold",
-    fontSize: fontSize.large,
+    fontSize: fontSize.medium,
     marginLeft: spacing.small,
+  },
+  profileInitial: {
+    color: "#FFF",
+    fontSize: fontSize.xxxLarge,
+    fontWeight: "bold",
+  },
+  profileName: {
+    color: "#FFF",
+    fontSize: fontSize.xxxLarge,
+    fontWeight: "bold",
+    marginBottom: spacing.tiny,
+  },
+  profileRole: {
+    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: fontSize.large,
+    marginBottom: spacing.tiny,
+  },
+  profileEmail: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: fontSize.medium,
   },
 })

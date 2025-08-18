@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
@@ -15,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { db } from "../firebaseConfig"
 import { collection, getDocs, query, orderBy, limit, where } from "firebase/firestore"
 import { useTheme } from "../contexts/ThemeContext"
+import CustomHeader from "../components/CustomHeader"
 import { 
   spacing, 
   fontSize, 
@@ -61,6 +63,12 @@ export default function AdminDashboardScreen() {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [greeting, setGreeting] = useState<string>('');
+
+  // Set greeting for admin users
+  useEffect(() => {
+    setGreeting('HELLO ADMIN!');
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -205,10 +213,28 @@ export default function AdminDashboardScreen() {
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
-      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#121212" : "#E2EBDD",
     },
-    activityCard: {
+    card: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
+    cardHeader: {
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
+    },
+    cardTitle: {
+      color: isDarkMode ? "#FFFFFF" : "#333",
+    },
+    cardSubtitle: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    cardValue: {
+      color: isDarkMode ? "#81C784" : "#2E7D32",
+    },
+    cardChange: {
+      color: isDarkMode ? "#B0B0B0" : "#666",
+    },
+    activityItem: {
+      borderBottomColor: isDarkMode ? "#2D2D2D" : "#E0E0E0",
     },
     activityText: {
       color: isDarkMode ? "#FFFFFF" : "#333",
@@ -216,8 +242,11 @@ export default function AdminDashboardScreen() {
     activityTime: {
       color: isDarkMode ? "#B0B0B0" : "#666",
     },
+    activityCard: {
+      backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+    },
     activityIcon: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
     },
     sectionTitle: {
       color: isDarkMode ? "#81C784" : "#2E7D32",
@@ -236,25 +265,7 @@ export default function AdminDashboardScreen() {
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <Text style={styles.adminName}>Administrator</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <View style={styles.notificationBadge}>
-                <Ionicons name="notifications" size={24} color="#FFF" />
-                <View style={styles.badge} />
-              </View>
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
+      <CustomHeader showLogo={true} isDatabaseScreen={true} greeting={greeting} />
 
       <ScrollView 
         style={styles.scrollView}
@@ -344,55 +355,13 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  header: {
-    height: 120,
-    marginBottom: spacing.large,
-  },
-  headerGradient: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingBottom: spacing.large,
-    paddingHorizontal: spacing.large,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  welcomeText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: fontSize.medium,
-    marginBottom: spacing.tiny,
-  },
-  adminName: {
-    color: "#FFF",
-    fontSize: fontSize.huge,
-    fontWeight: "bold",
-  },
-  headerRight: {
-    alignItems: "center",
-  },
-  notificationBadge: {
-    position: "relative",
-  },
-  badge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF5722",
+    backgroundColor: "#E2EBDD",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 140 : 120,
     paddingHorizontal: spacing.large,
     paddingBottom: spacing.huge,
   },
@@ -492,7 +461,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#E2EBDD",
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.medium,
@@ -510,3 +479,5 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 })
+
+

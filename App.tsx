@@ -25,13 +25,17 @@ function AppContent() {
       />
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="Splash"
           screenOptions={{
             headerShown: false,
             animation: Platform.OS === 'ios' ? 'slide_from_right' : 'fade_from_bottom',
             gestureEnabled: true,
           }}
         >
+          <Stack.Screen
+            name="Splash"
+            component={SplashScreen}
+          />
           <Stack.Screen
             name="Login"
             component={LoginScreen}
@@ -55,26 +59,10 @@ function AppContent() {
 }
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     // Initialize admin credentials when app starts
     initializeAdminCredentials();
   }, []);
-
-  const handleSplashFinish = () => {
-    setIsLoading(false);
-  };
-
-  if (isLoading) {
-    return (
-      <ThemeProvider>
-        <UserProvider>
-          <SplashScreen onFinish={handleSplashFinish} />
-        </UserProvider>
-      </ThemeProvider>
-    );
-  }
 
   return (
     <ThemeProvider>

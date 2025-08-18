@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, TextInput, ScrollView, Dimensions, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth, db } from '../firebaseConfig';
@@ -10,6 +10,8 @@ import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisSe
 import ChartDataService from '../services/chartDataService';
 import DashboardStorageService from '../services/dashboardStorageService';
 import ResponsiveTable from '../components/ResponsiveTable';
+import CustomHeader from '../components/CustomHeader';
+
 import { useUser } from '../contexts/UserContext';
 import { getUserID } from '../utils/userUtils';
 import { 
@@ -21,6 +23,8 @@ import {
   isTablet
 } from '../utils/responsive';
 
+const { width: screenWidth } = Dimensions.get('window');
+
 const initialPrograms: Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }> = [];
 
 export default function DatabaseScreen() {
@@ -31,11 +35,23 @@ export default function DatabaseScreen() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [errors, setErrors] = useState<{ [key: number]: boolean }>({});
   const [loadingRCM, setLoadingRCM] = useState(false);
+  const [greeting, setGreeting] = useState<string>('');
 
   const [importedFiles, setImportedFiles] = useState<ImportedFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [showImportedFiles, setShowImportedFiles] = useState(false);
   const [currentDataAnalysis, setCurrentDataAnalysis] = useState<ExcelAnalysis | null>(null);
+
+  // Set greeting when user is authenticated
+  useEffect(() => {
+    if (user && isAuthenticated && isAdminCreatedUser) {
+      // Get user data from context or user object
+      const userName = user.fullName || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else {
+      setGreeting('');
+    }
+  }, [user, isAuthenticated, isAdminCreatedUser]);
 
   // Load RCM data from Firestore when RCM is shown
   useEffect(() => {
@@ -468,142 +484,153 @@ export default function DatabaseScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Import Section */}
-      <View style={styles.importSection}>
-        <Text style={styles.sectionTitle}>Import Data</Text>
-        <Text style={styles.sectionDescription}>
-          Import equipment and maintenance data from Excel files (.xlsx, .xls)
-        </Text>
-        
+      <CustomHeader showLogo={true} isDatabaseScreen={true} greeting={greeting} />
+      
+      <ScrollView 
+        style={styles.scrollContainer} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Import Data Section */}
+        <View style={styles.importSection}>
+          <Text style={styles.sectionTitle}>Import Data</Text>
+          <Text style={styles.sectionDescription}>
+            Import equipment and maintenance data from Excel files (.xlsx, .xls)
+          </Text>
+          
+          <Pressable 
+            style={styles.importButton} 
+            onPress={handleImport}
+            disabled={isImporting}
+          >
+            <LinearGradient
+              colors={['#4CAF50', '#2E7D32']}
+              style={styles.buttonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.buttonText}>
+                {isImporting ? 'Uploading...' : '📁 Import Excel File'}
+              </Text>
+            </LinearGradient>
+          </Pressable>
+          
+          <Text style={styles.fileTypeInfo}>Supported formats: .xlsx, .xls</Text>
+        </View>
+
+        {/* My Imported Files Button */}
         <Pressable 
-          style={styles.importButton} 
-          onPress={handleImport}
-          disabled={isImporting}
+          style={styles.importedFilesButton} 
+          onPress={() => setShowImportedFiles((prev) => !prev)}
         >
           <LinearGradient
-            colors={['#4CAF50', '#2E7D32']}
+            colors={['#FF9800', '#F57C00']}
             style={styles.buttonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.buttonText}>
-              {isImporting ? 'Uploading...' : '📁 Import Excel File'}
+              📂 My Imported Files ({importedFiles.length})
             </Text>
           </LinearGradient>
         </Pressable>
-        
 
-      </View>
-
-      {/* Imported Files Section */}
-      <Pressable 
-        style={styles.importedFilesButton} 
-        onPress={() => setShowImportedFiles((prev) => !prev)}
-      >
-        <LinearGradient
-          colors={['#FF9800', '#F57C00']}
-          style={styles.buttonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.buttonText}>
-            📂 My Imported Files ({importedFiles.length})
-          </Text>
-        </LinearGradient>
-      </Pressable>
-
-      {/* Imported Files List */}
-      {showImportedFiles && (
-        <View style={styles.importedFilesSection}>
-          <Text style={styles.sectionTitle}>Your Imported Files</Text>
-          
-          {loadingFiles ? (
-            <Text style={styles.loadingText}>Loading files...</Text>
-          ) : importedFiles.length === 0 ? (
-            <View style={styles.emptyFilesContainer}>
-              <Text style={styles.emptyFilesText}>
-                No imported files found. Upload an Excel file to get started!
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.filesTable}>
-              {/* Table Header */}
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, { flex: 2 }]}>File Name</Text>
-                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Size</Text>
-                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Action</Text>
+        {/* Imported Files List */}
+        {showImportedFiles && (
+          <View style={styles.importedFilesSection}>
+            <Text style={styles.sectionTitle}>Your Imported Files</Text>
+            
+            {loadingFiles ? (
+              <Text style={styles.loadingText}>Loading files...</Text>
+            ) : importedFiles.length === 0 ? (
+              <View style={styles.emptyFilesContainer}>
+                <Text style={styles.emptyFilesText}>
+                  No imported files found. Upload an Excel file to get started!
+                </Text>
               </View>
-              
-              {/* Table Rows */}
-              {importedFiles.map((file) => (
-                <View key={file.id} style={styles.tableRow}>
-                  <View style={{ flex: 2 }}>
-                    <Text style={styles.fileName} numberOfLines={1}>
-                      {file.originalName}
-                    </Text>
-                    <Text style={styles.fileDate}>
-                      {formatDate(file.uploadedAt)}
-                    </Text>
-                  </View>
-                  
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.fileSize}>
-                      {formatFileSize(file.fileSize)}
-                    </Text>
-                  </View>
-                  
-                  <View style={{ flex: 1 }}>
-                    <Pressable 
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteFile(file)}
-                    >
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </Pressable>
-                  </View>
+            ) : (
+              <View style={styles.filesTable}>
+                {/* Table Header */}
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderText, { flex: 2 }]}>File Name</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Size</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Action</Text>
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
+                
+                {/* Table Rows */}
+                {importedFiles.map((file) => (
+                  <View key={file.id} style={styles.tableRow}>
+                    <View style={{ flex: 2 }}>
+                      <Text style={styles.fileName} numberOfLines={1}>
+                        {file.originalName}
+                      </Text>
+                      <Text style={styles.fileDate}>
+                        {formatDate(file.uploadedAt)}
+                      </Text>
+                    </View>
+                    
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fileSize}>
+                        {formatFileSize(file.fileSize)}
+                      </Text>
+                    </View>
+                    
+                    <View style={{ flex: 1 }}>
+                      <Pressable 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteFile(file)}
+                      >
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-      {/* RCM Button */}
-      <Pressable style={styles.rcmButton} onPress={() => setShowRCM((prev) => !prev)}>
-        <LinearGradient
-          colors={['#1976D2', '#64B5F6']}
-          style={styles.buttonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.buttonText}>Reliability Centered Maintenance (RCM)</Text>
-        </LinearGradient>
-      </Pressable>
+        {/* RCM Button */}
+        <Pressable style={styles.rcmButton} onPress={() => setShowRCM((prev) => !prev)}>
+          <LinearGradient
+            colors={['#1976D2', '#64B5F6']}
+            style={styles.buttonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.buttonText}>Reliability Centered Maintenance (RCM)</Text>
+          </LinearGradient>
+        </Pressable>
 
-      {/* RCM Table */}
-      {showRCM && (
-        loadingRCM ? (
-          <Text style={{ textAlign: 'center', marginTop: spacing.large, fontSize: fontSize.large, color: '#666' }}>Loading...</Text>
-        ) : (
-          <ResponsiveTable
-            columns={[
-              { key: 'program', title: 'Program', width: 140 },
-              { key: 'noOfHouses', title: 'No. of Houses', width: 120, required: true },
-              { key: 'completed', title: 'Completed', width: 100 },
-              { key: 'remaining', title: 'Remaining', width: 100 },
-              { key: 'percentCompleted', title: '% Completed', width: 120 }
-            ]}
-            data={programs}
-            editIndex={editIndex}
-            errors={errors}
-            onEdit={handleEdit}
-            onSave={handleSave}
-            onChange={handleChange}
-            onAddRow={handleAddProgram}
-            isLoading={loadingRCM}
-          />
-        )
-      )}
+        {/* RCM Table */}
+        {showRCM && (
+          loadingRCM ? (
+            <Text style={styles.loadingText}>Loading...</Text>
+          ) : (
+            <ResponsiveTable
+              columns={[
+                { key: 'program', title: 'Program', width: 140 },
+                { key: 'noOfHouses', title: 'No. of Houses', width: 120, required: true },
+                { key: 'completed', title: 'Completed', width: 100 },
+                { key: 'remaining', title: 'Remaining', width: 100 },
+                { key: 'percentCompleted', title: '% Completed', width: 120 }
+              ]}
+              data={programs}
+              editIndex={editIndex}
+              errors={errors}
+              onEdit={handleEdit}
+              onSave={handleSave}
+              onChange={handleChange}
+              onAddRow={handleAddProgram}
+              isLoading={loadingRCM}
+            />
+          )
+        )}
 
+        {/* Bottom Spacing */}
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
     </View>
   );
 }
@@ -611,156 +638,172 @@ export default function DatabaseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F3',
-    padding: spacing.large,
-    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
-    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    backgroundColor: '#E2EBDD',
   },
-  title: {
-    fontSize: fontSize.xxxLarge,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-    marginBottom: spacing.medium,
-    textAlign: 'center',
+  scrollContainer: {
+    flex: 1,
   },
-  text: {
-    fontSize: fontSize.large,
-    textAlign: 'center',
-    color: '#555',
-    marginBottom: spacing.huge,
+  scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 140 : 120,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   importSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: borderRadius.xLarge,
-    padding: isSmallDevice() ? spacing.large : spacing.xxLarge,
-    marginTop: spacing.large,
-    ...getShadow(4),
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 0,
   },
   sectionTitle: {
-    fontSize: fontSize.xLarge,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#2E7D32',
-    marginBottom: spacing.small,
+    color: '#4CAF50',
+    marginBottom: 8,
     textAlign: 'center',
   },
   sectionDescription: {
-    fontSize: fontSize.medium,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginBottom: spacing.xxLarge,
-    lineHeight: spacing.large + 4,
+    marginBottom: 24,
+    lineHeight: 24,
   },
   importButton: {
-    borderRadius: borderRadius.large,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...getShadow(6),
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
   },
   buttonGradient: {
-    paddingVertical: spacing.large,
-    paddingHorizontal: spacing.xxxLarge,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     alignItems: 'center',
   },
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: fontSize.large,
+    fontSize: 18,
   },
   fileTypeInfo: {
-    fontSize: fontSize.small,
+    fontSize: 14,
     color: '#888',
     textAlign: 'center',
-    marginTop: spacing.medium,
     fontStyle: 'italic',
   },
-
   importedFilesButton: {
-    marginTop: spacing.large,
-    borderRadius: borderRadius.large,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...getShadow(6),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
   },
   importedFilesSection: {
-    marginTop: spacing.large,
+    marginBottom: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: borderRadius.xLarge,
-    padding: spacing.medium,
-    ...getShadow(4),
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
     maxHeight: isSmallDevice() ? 400 : 500,
+    borderWidth: 0,
   },
   rcmButton: {
-    marginTop: spacing.large,
-    borderRadius: borderRadius.large,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...getShadow(6),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
   },
   loadingText: {
     textAlign: 'center',
-    fontSize: fontSize.medium,
+    marginTop: 24,
+    fontSize: 18,
     color: '#666',
-    marginTop: spacing.large,
   },
   emptyFilesContainer: {
-    padding: spacing.large,
+    padding: 32,
     alignItems: 'center',
   },
   emptyFilesText: {
-    fontSize: fontSize.medium,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    lineHeight: fontSize.medium + 4,
+    lineHeight: 24,
   },
   filesTable: {
-    marginTop: spacing.medium,
+    marginTop: 16,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#4CAF50',
-    paddingVertical: spacing.medium,
-    paddingHorizontal: spacing.medium,
-    borderTopLeftRadius: borderRadius.medium,
-    borderTopRightRadius: borderRadius.medium,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   tableHeaderText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: fontSize.medium,
+    fontSize: 14,
     textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    paddingVertical: spacing.medium,
-    paddingHorizontal: spacing.medium,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
     alignItems: 'center',
   },
   fileName: {
-    fontSize: fontSize.medium,
+    fontSize: 14,
     color: '#333',
     fontWeight: '600',
   },
   fileDate: {
-    fontSize: fontSize.small,
+    fontSize: 12,
     color: '#666',
     marginTop: 2,
   },
   fileSize: {
-    fontSize: fontSize.medium,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
   },
   deleteButton: {
     backgroundColor: '#F44336',
-    paddingVertical: spacing.small,
-    paddingHorizontal: spacing.medium,
-    borderRadius: borderRadius.small,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
     alignItems: 'center',
   },
   deleteButtonText: {
     color: '#FFF',
-    fontSize: fontSize.small,
+    fontSize: 12,
     fontWeight: '600',
+  },
+  bottomSpacing: {
+    height: 100,
   },
 
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Dimensions, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Dimensions, SafeAreaView, Platform } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { useUser } from '../contexts/UserContext';
 import { getUserID } from '../utils/userUtils';
+import CustomHeader from '../components/CustomHeader';
 import { 
   spacing, 
   fontSize, 
@@ -29,6 +30,7 @@ const ProgramScreen = () => {
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramRow | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [greeting, setGreeting] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -45,6 +47,19 @@ const ProgramScreen = () => {
       }
     });
     return () => unsubscribe();
+  }, [user, isAdminCreatedUser]);
+
+  // Set greeting when user is authenticated
+  useEffect(() => {
+    if (user && isAdminCreatedUser) {
+      const userName = user.fullName || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else if (user) {
+      const userName = user.email || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else {
+      setGreeting('');
+    }
   }, [user, isAdminCreatedUser]);
 
   // Only show programs with at least one filled data field
@@ -111,21 +126,31 @@ const ProgramScreen = () => {
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
-        <Text style={styles.title}>Programs</Text>
+    <View style={styles.container}>
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      <ScrollView 
+        style={styles.scrollContainer} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.tableContainer}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderCell}>Program</Text>
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderCell}>Programs</Text>
+          </View>
+          {filledPrograms.map((row, idx) => (
+            <Pressable key={`program-${idx}-${row.program}`} onPress={() => handleRowPress(row)}>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>{row.program}</Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
-        {filledPrograms.map((row, idx) => (
-          <Pressable key={`program-${idx}-${row.program}`} onPress={() => handleRowPress(row)}>
-            <View style={styles.tableRow}>
-              <Text style={styles.tableCell}>{row.program}</Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
+        
+        {/* Bottom Spacing */}
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+      
       {/* Modal for program chart */}
       <Modal
         visible={modalVisible}
@@ -233,22 +258,22 @@ const ProgramScreen = () => {
           </View>
         </View>
       </Modal>
-      </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    padding: spacing.large,
-    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
-    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    backgroundColor: '#E2EBDD',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 160 : 140,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   title: {
     fontSize: fontSize.xxxLarge,
@@ -262,7 +287,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: borderRadius.large,
     padding: spacing.large,
-    marginTop: spacing.medium,
+    marginTop: spacing.large,
+    marginBottom: spacing.large,
     ...getShadow(6),
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -323,6 +349,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: borderRadius.large,
     alignItems: 'center',
   },
+  modalHeaderGradient: {
+    padding: spacing.large,
+    borderTopLeftRadius: borderRadius.large,
+    borderTopRightRadius: borderRadius.large,
+    alignItems: 'center',
+  },
   modalTitle: {
     fontSize: fontSize.xxLarge,
     fontWeight: 'bold',
@@ -341,10 +373,6 @@ const styles = StyleSheet.create({
   },
   chartScrollContainer: {
     flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.large,
-    paddingBottom: spacing.xxxLarge,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -411,6 +439,12 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     ...getShadow(6),
   },
+  summaryText: {
+    fontSize: fontSize.medium,
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: fontSize.medium + 4,
+  },
   summaryTitle: {
     fontSize: fontSize.large,
     fontWeight: 'bold',
@@ -469,6 +503,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: fontSize.medium,
+  },
+  bottomSpacing: {
+    height: 100,
   },
 });
 

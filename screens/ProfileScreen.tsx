@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -7,19 +5,17 @@ import {
   Pressable, 
   StyleSheet, 
   Dimensions,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Alert,
   ActivityIndicator
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { useUser } from '../contexts/UserContext';
+import CustomHeader from '../components/CustomHeader';
 import { 
   spacing, 
   fontSize, 
@@ -46,6 +42,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [userData, setUserData] = useState<UserData>({});
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [greeting, setGreeting] = useState<string>('');
   const { user: contextUser, logout: contextLogout, isAuthenticated } = useUser();
 
   useEffect(() => {
@@ -85,6 +82,19 @@ export default function ProfileScreen({ navigation }: any) {
 
     return () => unsubscribe();
   }, []);
+
+  // Set greeting when user is authenticated
+  useEffect(() => {
+    if (contextUser && isAuthenticated) {
+      const userName = contextUser.fullName || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else if (user) {
+      const userName = user.displayName || userData.name || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else {
+      setGreeting('');
+    }
+  }, [contextUser, user, userData.name, isAuthenticated]);
 
   // Use context user data if available (for admin-created users)
   const displayUser = contextUser || user;
@@ -153,109 +163,94 @@ export default function ProfileScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Gradient Background */}
-      <LinearGradient
-        colors={['#4CAF50', '#2E7D32', '#1B5E20']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      {/* Background */}
+      <View style={styles.background} />
 
-      {/* Background Blur Effect */}
-      <BlurView intensity={20} style={styles.blurContainer}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardContainer} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContainer} 
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Profile Card */}
-            <View style={styles.profileCard}>
-              {/* Header */}
-              <View style={styles.header}>
-                <View style={styles.avatarContainer}>
-                  <LinearGradient
-                    colors={['#4CAF50', '#2E7D32']}
-                    style={styles.avatarGradient}
-                  >
-                    <Text style={styles.avatarText}>
-                      {displayUserData.name ? displayUserData.name.charAt(0).toUpperCase() : 'U'}
-                    </Text>
-                  </LinearGradient>
+      <View style={styles.contentContainer}>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.avatarContainer}>
+              <LinearGradient
+                colors={['#4CAF50', '#2E7D32']}
+                style={styles.avatarGradient}
+              >
+                <Text style={styles.avatarText}>
+                  {displayUserData.name ? displayUserData.name.charAt(0).toUpperCase() : 'U'}
+                </Text>
+              </LinearGradient>
+            </View>
+            <Text style={styles.title}>Profile</Text>
+            <Text style={styles.subtitle}>Your account information</Text>
+          </View>
+
+          {/* Profile Information */}
+          <View style={styles.profileInfo}>
+            <View style={styles.infoSection}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+              
+              <View style={styles.infoItem}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="person" size={getIconSize(20)} color="#2E7D32" />
                 </View>
-                <Text style={styles.title}>Profile</Text>
-                <Text style={styles.subtitle}>Your account information</Text>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Full Name</Text>
+                  <Text style={styles.infoValue}>{displayUserData.name || 'Not provided'}</Text>
+                </View>
               </View>
 
-              {/* Profile Information */}
-              <View style={styles.profileInfo}>
-                <View style={styles.infoSection}>
-                  <Text style={styles.sectionTitle}>Personal Information</Text>
-                  
-                  <View style={styles.infoItem}>
-                    <View style={styles.infoIcon}>
-                      <Ionicons name="person" size={getIconSize(20)} color="#2E7D32" />
-                    </View>
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Full Name</Text>
-                      <Text style={styles.infoValue}>{displayUserData.name || 'Not provided'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoItem}>
-                    <View style={styles.infoIcon}>
-                      <Ionicons name="mail" size={getIconSize(20)} color="#2E7D32" />
-                    </View>
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Email</Text>
-                      <Text style={styles.infoValue}>{displayUserData.email || 'Not provided'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoItem}>
-                    <View style={styles.infoIcon}>
-                      <Ionicons name="id-card" size={getIconSize(20)} color="#2E7D32" />
-                    </View>
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Employee ID</Text>
-                      <Text style={styles.infoValue}>{displayUserData.employeeId || 'Not provided'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoItem}>
-                    <View style={styles.infoIcon}>
-                      <Ionicons name="location" size={getIconSize(20)} color="#2E7D32" />
-                    </View>
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Project Name</Text>
-                      <Text style={styles.infoValue}>{displayUserData.projectName || 'Not provided'}</Text>
-                    </View>
-                  </View>
+              <View style={styles.infoItem}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="mail" size={getIconSize(20)} color="#2E7D32" />
                 </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Email</Text>
+                  <Text style={styles.infoValue}>{displayUserData.email || 'Not provided'}</Text>
+                </View>
+              </View>
 
-                {/* Account Actions */}
-                <View style={styles.actionsSection}>
-                  <Text style={styles.sectionTitle}>Account Actions</Text>
-                  
-                  <Pressable style={styles.logoutButton} onPress={handleLogout}>
-                    <View style={styles.logoutButtonContent}>
-                      <Ionicons name="log-out" size={getIconSize(20)} color="#F44336" />
-                      <Text style={styles.logoutButtonText}>Logout</Text>
-                    </View>
-                  </Pressable>
+              <View style={styles.infoItem}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="id-card" size={getIconSize(20)} color="#2E7D32" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Employee ID</Text>
+                  <Text style={styles.infoValue}>{displayUserData.employeeId || 'Not provided'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="location" size={getIconSize(20)} color="#2E7D32" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Project Name</Text>
+                  <Text style={styles.infoValue}>{displayUserData.projectName || 'Not provided'}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Decorative Elements */}
-            <View style={styles.decorativeCircle1} />
-            <View style={styles.decorativeCircle2} />
-            <View style={styles.decorativeCircle3} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </BlurView>
+            {/* Account Actions */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Account Actions</Text>
+              
+              <Pressable style={styles.logoutButton} onPress={handleLogout}>
+                <View style={styles.logoutButtonContent}>
+                  <Ionicons name="log-out" size={getIconSize(20)} color="#F44336" />
+                  <Text style={styles.logoutButtonText}>Logout</Text>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+        <View style={styles.decorativeCircle3} />
+      </View>
     </View>
   );
 }
@@ -290,43 +285,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: fontSize.large + 4,
   },
-  gradient: {
+  background: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
+    backgroundColor: '#E2EBDD',
   },
-  blurContainer: {
+  contentContainer: {
     flex: 1,
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.large,
-    paddingVertical: spacing.large,
-    paddingTop: getSafeAreaPadding().top + spacing.xLarge + spacing.large,
-    paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
+    paddingTop: Platform.OS === 'ios' ? 258 : 250,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: borderRadius.xxxLarge,
-    padding: getCardPadding(),
+    padding: isSmallDevice() ? spacing.medium : isTablet() ? spacing.large : spacing.medium,
+    paddingBottom: isSmallDevice() ? spacing.large : isTablet() ? spacing.xLarge : spacing.large,
     width: getContainerWidth(0.9),
-    maxHeight: screenDimensions.height * (isSmallDevice() ? 0.85 : 0.8),
     alignSelf: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    minHeight: screenDimensions.height * 0.5,
     ...getShadow(10),
   },
   header: {
     alignItems: 'center',
-    marginBottom: isSmallDevice() ? spacing.large : spacing.xLarge,
+    marginBottom: isSmallDevice() ? spacing.medium : spacing.large,
   },
   avatarContainer: {
-    marginBottom: spacing.large,
+    marginBottom: spacing.medium,
   },
   avatarGradient: {
     width: getIconSize(60),
@@ -345,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxxLarge,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: spacing.small,
+    marginBottom: spacing.tiny,
     textAlign: 'center',
   },
   subtitle: {
@@ -358,23 +350,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   infoSection: {
-    marginBottom: spacing.large,
+    marginBottom: spacing.medium,
   },
   sectionTitle: {
     fontSize: fontSize.large,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: spacing.medium,
+    marginBottom: spacing.small,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.medium,
-    paddingVertical: spacing.small,
+    marginBottom: spacing.small,
+    paddingVertical: spacing.tiny,
     paddingHorizontal: spacing.medium,
     backgroundColor: '#F8F9FA',
     borderRadius: borderRadius.large,
-    minHeight: isSmallDevice() ? 50 : 55,
+    minHeight: isSmallDevice() ? 45 : 50,
   },
   infoIcon: {
     width: getIconSize(32),

@@ -15,7 +15,6 @@ import {
   isTablet
 } from "../utils/responsive"
 import { Ionicons } from "@expo/vector-icons"
-import CustomHeader from "../components/CustomHeader"
 import AdminDashboardScreen from "./AdminDashboardScreen"
 import AdminUsersScreen from "./AdminUsersScreen"
 import AdminAnalyticsScreen from "./AdminAnalyticsScreen"
@@ -96,7 +95,6 @@ export default function AdminTabs() {
 
   return (
     <View style={styles.container}>
-      <CustomHeader title="Admin Panel" />
       <Tab.Navigator
         initialRouteName="Dashboard"
         screenOptions={({ route }: { route: any }) => ({
@@ -141,7 +139,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
-    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
+    paddingTop: 0,
   },
   tabBar: {
     backgroundColor: "transparent",

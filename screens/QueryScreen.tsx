@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
@@ -26,6 +24,7 @@ import { ImportedFile, ImportedFilesService } from '../services/importedFilesSer
 import GeminiService from '../services/geminiService';
 import { useUser } from '../contexts/UserContext';
 import { getUserID } from '../utils/userUtils';
+import CustomHeader from '../components/CustomHeader';
 import { 
   spacing, 
   fontSize, 
@@ -49,6 +48,20 @@ export default function QueryScreen() {
   const [latestFile, setLatestFile] = useState<ImportedFile | null>(null);
   const [loadingLatestFile, setLoadingLatestFile] = useState(true);
   const [retryingAnalysis, setRetryingAnalysis] = useState(false);
+  const [greeting, setGreeting] = useState<string>('');
+
+  // Set greeting when user is authenticated
+  useEffect(() => {
+    if (user && isAdminCreatedUser) {
+      const userName = user.fullName || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else if (user) {
+      const userName = user.email || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else {
+      setGreeting('');
+    }
+  }, [user, isAdminCreatedUser]);
 
   // Load the latest imported Excel file for data context
   const loadLatestExcelFile = async () => {
@@ -184,25 +197,19 @@ export default function QueryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Emerald Gradient Background */}
-      <LinearGradient
-        colors={['#10b981', '#059669', '#047857']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      {/* Background */}
+      <View style={styles.background} />
 
-      {/* Background Blur Effect */}
-      <BlurView intensity={20} style={styles.blurContainer}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardContainer} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContainer} 
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
             {/* Query Card */}
             <View style={styles.queryCard}>
               {/* Header */}
@@ -358,7 +365,6 @@ export default function QueryScreen() {
             <View style={styles.decorativeCircle3} />
           </ScrollView>
         </KeyboardAvoidingView>
-      </BlurView>
 
       {/* Chatbot Components */}
       <View style={styles.chatbotContainer}>
@@ -382,16 +388,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  gradient: {
+  background: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
+    backgroundColor: '#E2EBDD',
   },
-  blurContainer: {
-    flex: 1,
-  },
+
   keyboardContainer: {
     flex: 1,
   },
@@ -401,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
     paddingVertical: spacing.xLarge,
-    paddingTop: getSafeAreaPadding().top + spacing.xLarge + spacing.large,
+    paddingTop: Platform.OS === 'ios' ? 120 : 100,
     paddingBottom: spacing.xLarge,
   },
   queryCard: {

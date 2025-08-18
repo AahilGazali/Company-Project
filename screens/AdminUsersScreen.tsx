@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
@@ -18,6 +19,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { UserAuthService } from "../services/userAuthService"
 import { useTheme } from "../contexts/ThemeContext"
+import CustomHeader from "../components/CustomHeader"
 import { 
   spacing, 
   fontSize, 
@@ -497,7 +499,7 @@ export default function AdminUsersScreen() {
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
-      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#121212" : "#E2EBDD",
     },
     searchInputContainer: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
@@ -518,7 +520,7 @@ export default function AdminUsersScreen() {
       color: isDarkMode ? "#B0B0B0" : "#999",
     },
     actionButton: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
     },
     statCard: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
@@ -537,7 +539,7 @@ export default function AdminUsersScreen() {
       color: isDarkMode ? "#B0B0B0" : "#666",
     },
     modalInput: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
       color: isDarkMode ? "#FFFFFF" : "#333",
       borderColor: isDarkMode ? "#404040" : "#E0E0E0",
     },
@@ -548,11 +550,11 @@ export default function AdminUsersScreen() {
       color: isDarkMode ? "#B0B0B0" : "#666",
     },
     roleButton: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
       borderColor: isDarkMode ? "#404040" : "#E0E0E0",
     },
     statusButton: {
-      backgroundColor: isDarkMode ? "#2D2D2D" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#2D2D2D" : "#E2EBDD",
       borderColor: isDarkMode ? "#404040" : "#E0E0E0",
     }
   }
@@ -643,31 +645,8 @@ export default function AdminUsersScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>User Management</Text>
-            <Text style={[styles.headerSubtitle, { 
-              color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.8)" 
-            }]}>Manage system users and permissions</Text>
-            <Pressable style={styles.refreshButton} onPress={() => {
-              try {
-                onRefresh()
-              } catch (error) {
-                console.error("Error refreshing:", error)
-                Alert.alert("Error", "Failed to refresh. Please try again.")
-              }
-            }}>
-              <Ionicons name="refresh" size={24} color="#FFF" />
-            </Pressable>
-          </View>
-        </LinearGradient>
-      </View>
-
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -1292,42 +1271,13 @@ export default function AdminUsersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  header: {
-    height: 120,
-    marginBottom: spacing.large,
-  },
-  headerGradient: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingBottom: spacing.large,
-    paddingHorizontal: spacing.large,
-  },
-  headerContent: {
-    alignItems: "center",
-    position: "relative",
-  },
-  refreshButton: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    padding: spacing.small,
-  },
-  headerTitle: {
-    color: "#FFF",
-    fontSize: fontSize.huge,
-    fontWeight: "bold",
-    marginBottom: spacing.tiny,
-  },
-  headerSubtitle: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: fontSize.medium,
+    backgroundColor: "#E2EBDD",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 160 : 140,
     paddingHorizontal: spacing.large,
     paddingBottom: spacing.huge,
     maxWidth: 1200,

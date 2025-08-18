@@ -1,14 +1,23 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import Svg, { Path, G, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const { width, height } = Dimensions.get('window');
 
-interface SplashScreenProps {
-  onFinish: () => void;
-}
+type RootStackParamList = {
+  Splash: undefined;
+  Login: undefined;
+  Home: undefined;
+  AdminLogin: undefined;
+  AdminHome: undefined;
+};
 
-const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+
+const SplashScreen: React.FC = () => {
+  const navigation = useNavigation<SplashScreenNavigationProp>();
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
 
@@ -35,7 +44,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        onFinish();
+        navigation.navigate('Login');
       });
     }, 2500);
 

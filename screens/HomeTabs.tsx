@@ -1,6 +1,6 @@
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { View, StyleSheet, Platform, Animated } from "react-native"
+import { View, StyleSheet, Platform, Animated, Text, Pressable } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -19,7 +19,6 @@ import QueryScreen from "./QueryScreen"
 import ProfileScreen from "./ProfileScreen"
 import ProgramScreen from './ProgramScreen';
 import { Ionicons } from "@expo/vector-icons"
-import CustomHeader from "../components/CustomHeader"
 
 const Tab = createBottomTabNavigator()
 
@@ -88,59 +87,84 @@ const TabBarIcon = ({
   )
 }
 
-export default function HomeTabs() {
+// Custom Tab Bar Component
+const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets()
   const safeArea = getSafeAreaPadding()
 
   return (
+    <View style={[styles.customTabBar, { paddingBottom: Math.max(insets.bottom, safeArea.bottom) }]}>
+      <View style={styles.tabBarBackground}>
+        <LinearGradient
+          colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
+          style={styles.tabBarGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        <BlurView intensity={20} style={styles.tabBarBlur} />
+        <View style={styles.tabBarBorder} />
+      </View>
+      
+      {state.routes.map((route: any, index: number) => {
+        const { options } = descriptors[route.key]
+        const label = options.tabBarLabel || options.title || route.name
+        const isFocused = state.index === index
+
+        let iconName = ""
+        if (route.name === "Database") iconName = isFocused ? "server" : "server-outline"
+        else if (route.name === "Programs") iconName = isFocused ? "list" : "list-outline"
+        else if (route.name === "Reports") iconName = isFocused ? "stats-chart" : "stats-chart-outline"
+        else if (route.name === "Query") iconName = isFocused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
+        else if (route.name === "Profile") iconName = isFocused ? "person" : "person-outline"
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          })
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name)
+          }
+        }
+
+        return (
+          <Pressable
+            key={route.key}
+            onPress={onPress}
+            style={styles.customTabItem}
+          >
+            <View style={styles.customTabContent}>
+              <TabBarIcon 
+                name={iconName} 
+                color={isFocused ? "#2E7D32" : "#6B7280"} 
+                size={getIconSize(isFocused ? 22 : 18)} 
+                focused={isFocused} 
+              />
+              <Text style={[
+                styles.customTabLabel,
+                { color: isFocused ? "#2E7D32" : "#6B7280" }
+              ]}>
+                {label}
+              </Text>
+            </View>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+export default function HomeTabs() {
+  return (
     <View style={styles.container}>
-      <CustomHeader />
       <Tab.Navigator
         initialRouteName="Database"
-        screenOptions={({ route }: { route: any }) => ({
-          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
-            let iconName = ""
-            if (route.name === "Database") iconName = focused ? "server" : "server-outline"
-            else if (route.name === "Programs") iconName = focused ? "list" : "list-outline"
-            else if (route.name === "Reports") iconName = focused ? "stats-chart" : "stats-chart-outline"
-            else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
-            else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
-
-            return <TabBarIcon 
-              name={iconName} 
-              color={color} 
-              size={getIconSize(focused ? 22 : 18)} 
-              focused={focused} 
-            />
-          },
-          tabBarActiveTintColor: "#2E7D32",
-          tabBarInactiveTintColor: "#6B7280",
-          tabBarStyle: [
-            styles.tabBar,
-            {
-              paddingBottom: Math.max(insets.bottom, safeArea.bottom),
-              height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80) + Math.max(insets.bottom, 0),
-            }
-          ],
-          tabBarLabelStyle: styles.tabBarLabel,
-          tabBarItemStyle: styles.tabBarItem,
-          tabBarLabelPosition: "below-icon",
+        tabBar={props => <CustomTabBar {...props} />}
+        screenOptions={{
           headerShown: false,
-          tabBarShowLabel: true,
-          tabBarHideOnKeyboard: true,
-          tabBarBackground: () => (
-            <View style={styles.tabBarBackground}>
-              <LinearGradient
-                colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
-                style={styles.tabBarGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              />
-              <BlurView intensity={20} style={styles.tabBarBlur} />
-              <View style={styles.tabBarBorder} />
-            </View>
-          ),
-        })}
+        }}
       >
         <Tab.Screen 
           name="Database" 
@@ -191,7 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderTopWidth: 0,
     paddingTop: spacing.large,
-    paddingHorizontal: spacing.small,
+    paddingHorizontal: spacing.medium,
     ...getShadow(12),
   },
   tabBarBackground: {
@@ -224,7 +248,9 @@ const styles = StyleSheet.create({
   },
   tabBarItem: {
     paddingVertical: spacing.small,
-    paddingHorizontal: spacing.tiny,
+    paddingHorizontal: spacing.small,
+    minWidth: 80,
+    flex: 1,
   },
   tabBarLabel: {
     fontSize: fontSize.tiny,
@@ -293,5 +319,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 2,
+  },
+  customTabBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "transparent",
+    borderTopWidth: 0,
+    paddingTop: spacing.large,
+    paddingHorizontal: spacing.medium,
+    height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80),
+    flexDirection: "row",
+    ...getShadow(12),
+  },
+  customTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.small,
+    minWidth: 80,
+  },
+  customTabContent: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customTabLabel: {
+    fontSize: fontSize.tiny,
+    fontWeight: "600",
+    marginTop: spacing.tiny,
+    letterSpacing: 0.2,
+    textAlign: "center",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
 })

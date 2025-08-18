@@ -7,12 +7,14 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { db } from "../firebaseConfig"
 import { collection, getDocs, query, orderBy, where } from "firebase/firestore"
 import { useTheme } from "../contexts/ThemeContext"
+import CustomHeader from "../components/CustomHeader"
 import { 
   spacing, 
   fontSize, 
@@ -157,7 +159,7 @@ export default function AdminAnalyticsScreen() {
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
-      backgroundColor: isDarkMode ? "#121212" : "#F8F9FA",
+      backgroundColor: isDarkMode ? "#121212" : "#E2EBDD",
     },
     chartContainer: {
       backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
@@ -187,21 +189,8 @@ export default function AdminAnalyticsScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={isDarkMode ? ["#2E2E2E", "#1A1A1A", "#0D0D0D"] : ["#4CAF50", "#2E7D32", "#1B5E20"]}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Analytics Dashboard</Text>
-            <Text style={[styles.headerSubtitle, dynamicStyles.headerSubtitle]}>
-              Real-time system performance insights
-            </Text>
-          </View>
-        </LinearGradient>
-      </View>
-
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -282,35 +271,13 @@ export default function AdminAnalyticsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  header: {
-    height: 120,
-    marginBottom: spacing.large,
-  },
-  headerGradient: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingBottom: spacing.large,
-    paddingHorizontal: spacing.large,
-  },
-  headerContent: {
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#FFF",
-    fontSize: fontSize.huge,
-    fontWeight: "bold",
-    marginBottom: spacing.tiny,
-  },
-  headerSubtitle: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: fontSize.medium,
+    backgroundColor: "#E2EBDD",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 160 : 140,
     paddingHorizontal: spacing.large,
     paddingBottom: spacing.huge,
   },

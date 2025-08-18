@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl, SafeAreaView, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { auth } from '../firebaseConfig';
 import DashboardStorageService, { StoredDashboard } from '../services/dashboardStorageService';
@@ -7,6 +7,7 @@ import ImportedFilesService from '../services/importedFilesService';
 import DashboardCharts from '../components/DashboardCharts';
 import { useUser } from '../contexts/UserContext';
 import { getUserID } from '../utils/userUtils';
+import CustomHeader from '../components/CustomHeader';
 import { spacing, fontSize, isTablet, borderRadius, getShadow } from '../utils/responsive';
 
 export default function ReportsScreen() {
@@ -15,6 +16,20 @@ export default function ReportsScreen() {
   const [selectedDashboard, setSelectedDashboard] = useState<StoredDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [greeting, setGreeting] = useState<string>('');
+
+  // Set greeting when user is authenticated
+  useEffect(() => {
+    if (user && isAdminCreatedUser) {
+      const userName = user.fullName || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else if (user) {
+      const userName = user.email || 'User';
+      setGreeting(`Hello ${userName}!`);
+    } else {
+      setGreeting('');
+    }
+  }, [user, isAdminCreatedUser]);
 
   // Load user dashboards
   const loadDashboards = async () => {
@@ -208,6 +223,7 @@ export default function ReportsScreen() {
 
     return (
     <SafeAreaView style={styles.safeArea}>
+      <CustomHeader showLogo={true} isDatabaseScreen={false} />
       <ScrollView 
         style={styles.container} 
         showsVerticalScrollIndicator={false}
@@ -238,15 +254,16 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#E2EBDD',
   },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
+    paddingTop: 0,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 120 : 100,
     paddingBottom: spacing.huge,
   },
   centerContainer: {
