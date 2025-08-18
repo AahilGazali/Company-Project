@@ -19,6 +19,7 @@ import QueryScreen from "./QueryScreen"
 import ProfileScreen from "./ProfileScreen"
 import ProgramScreen from './ProgramScreen';
 import { Ionicons } from "@expo/vector-icons"
+import CustomHeader from "../components/CustomHeader"
 
 const Tab = createBottomTabNavigator()
 
@@ -92,93 +93,100 @@ export default function HomeTabs() {
   const safeArea = getSafeAreaPadding()
 
   return (
-    <Tab.Navigator
-      initialRouteName="Database"
-      screenOptions={({ route }: { route: any }) => ({
-                 tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
-           let iconName = ""
-           if (route.name === "Database") iconName = focused ? "server" : "server-outline"
-           else if (route.name === "Programs") iconName = focused ? "list" : "list-outline"
-           else if (route.name === "Reports") iconName = focused ? "stats-chart" : "stats-chart-outline"
-           else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
-           else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
+    <View style={styles.container}>
+      <CustomHeader />
+      <Tab.Navigator
+        initialRouteName="Database"
+        screenOptions={({ route }: { route: any }) => ({
+          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
+            let iconName = ""
+            if (route.name === "Database") iconName = focused ? "server" : "server-outline"
+            else if (route.name === "Programs") iconName = focused ? "list" : "list-outline"
+            else if (route.name === "Reports") iconName = focused ? "stats-chart" : "stats-chart-outline"
+            else if (route.name === "Query") iconName = focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
+            else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
-                       return <TabBarIcon 
-                         name={iconName} 
-                         color={color} 
-                         size={getIconSize(focused ? 22 : 18)} 
-                         focused={focused} 
-                       />
-         },
-                tabBarActiveTintColor: "#2E7D32",
-        tabBarInactiveTintColor: "#6B7280",
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            paddingBottom: Math.max(insets.bottom, safeArea.bottom),
-            height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80) + Math.max(insets.bottom, 0),
-          }
-        ],
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarItemStyle: styles.tabBarItem,
-        tabBarLabelPosition: "below-icon",
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarHideOnKeyboard: true,
-        tabBarBackground: () => (
-          <View style={styles.tabBarBackground}>
-            <LinearGradient
-              colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
-              style={styles.tabBarGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
+            return <TabBarIcon 
+              name={iconName} 
+              color={color} 
+              size={getIconSize(focused ? 22 : 18)} 
+              focused={focused} 
             />
-            <BlurView intensity={20} style={styles.tabBarBlur} />
-            <View style={styles.tabBarBorder} />
-          </View>
-        ),
-      })}
-    >
-      <Tab.Screen 
-        name="Database" 
-        component={DatabaseScreen}
-        options={{
-          title: "Database",
-        }}
-      />
-      <Tab.Screen 
-        name="Programs" 
-        component={ProgramScreen}
-        options={{
-          title: "Programs",
-        }}
-      />
-      <Tab.Screen 
-        name="Reports" 
-        component={ReportsScreen}
-        options={{
-          title: "Reports",
-        }}
-      />
-      <Tab.Screen 
-        name="Query" 
-        component={QueryScreen}
-        options={{
-          title: "Query",
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{
-          title: "Profile",
-        }}
-      />
-    </Tab.Navigator>
+          },
+          tabBarActiveTintColor: "#2E7D32",
+          tabBarInactiveTintColor: "#6B7280",
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              paddingBottom: Math.max(insets.bottom, safeArea.bottom),
+              height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80) + Math.max(insets.bottom, 0),
+            }
+          ],
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
+          tabBarLabelPosition: "below-icon",
+          headerShown: false,
+          tabBarShowLabel: true,
+          tabBarHideOnKeyboard: true,
+          tabBarBackground: () => (
+            <View style={styles.tabBarBackground}>
+              <LinearGradient
+                colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
+                style={styles.tabBarGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+              />
+              <BlurView intensity={20} style={styles.tabBarBlur} />
+              <View style={styles.tabBarBorder} />
+            </View>
+          ),
+        })}
+      >
+        <Tab.Screen 
+          name="Database" 
+          component={DatabaseScreen}
+          options={{
+            title: "Database",
+          }}
+        />
+        <Tab.Screen 
+          name="Programs" 
+          component={ProgramScreen}
+          options={{
+            title: "Programs",
+          }}
+        />
+        <Tab.Screen 
+          name="Reports" 
+          component={ReportsScreen}
+          options={{
+            title: "Reports",
+          }}
+        />
+        <Tab.Screen 
+          name="Query" 
+          component={QueryScreen}
+          options={{
+            title: "Query",
+          }}
+        />
+        <Tab.Screen 
+          name="Profile" 
+          component={ProfileScreen}
+          options={{
+            title: "Profile",
+          }}
+        />
+      </Tab.Navigator>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F4F3',
+  },
   tabBar: {
     backgroundColor: "transparent",
     borderTopWidth: 0,

@@ -247,6 +247,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     padding: spacing.large,
+    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
     paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   title: {

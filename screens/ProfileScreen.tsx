@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.large,
     paddingVertical: spacing.large,
-    paddingTop: getSafeAreaPadding().top + spacing.large,
+    paddingTop: getSafeAreaPadding().top + spacing.xLarge + spacing.large,
     paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   profileCard: {

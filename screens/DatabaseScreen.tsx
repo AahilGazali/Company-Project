@@ -467,8 +467,7 @@ export default function DatabaseScreen() {
   };
 
   return (
-    <>
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       {/* Import Section */}
       <View style={styles.importSection}>
         <Text style={styles.sectionTitle}>Import Data</Text>
@@ -605,8 +604,7 @@ export default function DatabaseScreen() {
         )
       )}
 
-    </ScrollView>
-    </>
+    </View>
   );
 }
 
@@ -615,6 +613,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F0F4F3',
     padding: spacing.large,
+    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
     paddingBottom: isTablet() ? spacing.huge + spacing.large : spacing.huge * 2.5,
   },
   title: {

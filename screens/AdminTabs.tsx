@@ -15,6 +15,11 @@ import {
   isTablet
 } from "../utils/responsive"
 import { Ionicons } from "@expo/vector-icons"
+import CustomHeader from "../components/CustomHeader"
+import AdminDashboardScreen from "./AdminDashboardScreen"
+import AdminUsersScreen from "./AdminUsersScreen"
+import AdminAnalyticsScreen from "./AdminAnalyticsScreen"
+import AdminProfileScreen from "./AdminProfileScreen"
 
 const Tab = createBottomTabNavigator()
 
@@ -90,46 +95,54 @@ export default function AdminTabs() {
   const { isDarkMode } = useTheme()
 
   return (
-    <Tab.Navigator
-      initialRouteName="Dashboard"
-      screenOptions={({ route }: { route: any }) => ({
-        tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
-          let iconName = ""
-          if (route.name === "Dashboard") iconName = focused ? "grid" : "grid-outline"
-          else if (route.name === "Users") iconName = focused ? "people" : "people-outline"
-          else if (route.name === "Analytics") iconName = focused ? "analytics" : "analytics-outline"
-          else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
+    <View style={styles.container}>
+      <CustomHeader title="Admin Panel" />
+      <Tab.Navigator
+        initialRouteName="Dashboard"
+        screenOptions={({ route }: { route: any }) => ({
+          tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
+            let iconName = ""
+            if (route.name === "Dashboard") iconName = focused ? "grid" : "grid-outline"
+            else if (route.name === "Users") iconName = focused ? "people" : "people-outline"
+            else if (route.name === "Analytics") iconName = focused ? "analytics" : "analytics-outline"
+            else if (route.name === "Profile") iconName = focused ? "person" : "person-outline"
 
-          return <TabBarIcon name={iconName} color={color} size={size} focused={focused} />
-        },
-        tabBarActiveTintColor: "#4CAF50",
-        tabBarInactiveTintColor: isDarkMode ? "#B0B0B0" : "#666",
-        tabBarStyle: {
-          backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
-          borderTopColor: isDarkMode ? "#2D2D2D" : "#E0E0E0",
-          borderTopWidth: 1,
-          height: 60 + safeArea.bottom,
-          paddingBottom: safeArea.bottom,
-          paddingTop: 8,
-          ...getShadow(8),
-        },
-        tabBarLabelStyle: {
-          fontSize: fontSize.tiny,
-          fontWeight: "600",
-          marginTop: 4,
-        },
-        headerShown: false,
-      })}
-    >
-      <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
-      <Tab.Screen name="Users" component={AdminUsersScreen} />
-      <Tab.Screen name="Analytics" component={AdminAnalyticsScreen} />
-      <Tab.Screen name="Profile" component={AdminProfileScreen} />
-    </Tab.Navigator>
+            return <TabBarIcon name={iconName} color={color} size={size} focused={focused} />
+          },
+          tabBarActiveTintColor: "#4CAF50",
+          tabBarInactiveTintColor: isDarkMode ? "#B0B0B0" : "#666",
+          tabBarStyle: {
+            backgroundColor: isDarkMode ? "#1E1E1E" : "#FFF",
+            borderTopColor: isDarkMode ? "#2D2D2D" : "#E0E0E0",
+            borderTopWidth: 1,
+            height: 60 + safeArea.bottom,
+            paddingBottom: safeArea.bottom,
+            paddingTop: 8,
+            ...getShadow(8),
+          },
+          tabBarLabelStyle: {
+            fontSize: fontSize.tiny,
+            fontWeight: "600",
+            marginTop: 4,
+          },
+          headerShown: false,
+        })}
+      >
+        <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
+        <Tab.Screen name="Users" component={AdminUsersScreen} />
+        <Tab.Screen name="Analytics" component={AdminAnalyticsScreen} />
+        <Tab.Screen name="Profile" component={AdminProfileScreen} />
+      </Tab.Navigator>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    paddingTop: isTablet() ? spacing.huge + spacing.xxxLarge : spacing.huge + spacing.xxxLarge + spacing.large,
+  },
   tabBar: {
     backgroundColor: "transparent",
     borderTopWidth: 0,
@@ -222,8 +235,3 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
 })
-
-import AdminDashboardScreen from "./AdminDashboardScreen"
-import AdminUsersScreen from "./AdminUsersScreen"
-import AdminAnalyticsScreen from "./AdminAnalyticsScreen"
-import AdminProfileScreen from "./AdminProfileScreen"

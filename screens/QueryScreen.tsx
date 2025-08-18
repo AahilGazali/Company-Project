@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
     paddingVertical: spacing.xLarge,
-    paddingTop: getSafeAreaPadding().top + spacing.medium,
+    paddingTop: getSafeAreaPadding().top + spacing.xLarge + spacing.large,
     paddingBottom: spacing.xLarge,
   },
   queryCard: {
