@@ -1,208 +1,55 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  Pressable, 
-  Alert, 
-  StyleSheet, 
+"use client"
+
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useFocusEffect } from "@react-navigation/native"
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  Alert,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Animated
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
-import { onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
-import { auth } from '../firebaseConfig';
-import { QueryService } from '../services/queryService';
-import ChatButton from '../components/ChatButton';
-import ChatInterface from '../components/ChatInterface';
-import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
-import { ImportedFile, ImportedFilesService } from '../services/importedFilesService';
-import GeminiService from '../services/geminiService';
-import { useUser } from '../contexts/UserContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { getUserID } from '../utils/userUtils';
-import CustomHeader from '../components/CustomHeader';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-  spacing, 
-  fontSize, 
-  borderRadius, 
-  getContainerWidth, 
-  getCardPadding, 
+  Keyboard,
+  TouchableWithoutFeedback,
+} from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { Ionicons } from "@expo/vector-icons"
+import { QueryService } from "../services/queryService"
+import ChatButton from "../components/ChatButton"
+import ChatInterface from "../components/ChatInterface"
+import { ExcelAnalysisService, type ExcelAnalysis } from "../services/excelAnalysisService"
+import { type ImportedFile, ImportedFilesService } from "../services/importedFilesService"
+import GeminiService from "../services/geminiService"
+import { useUser } from "../contexts/UserContext"
+import { useTheme } from "../contexts/ThemeContext"
+import { getUserID } from "../utils/userUtils"
+import CustomHeader from "../components/CustomHeader"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import {
+  spacing,
+  fontSize,
+  borderRadius,
+  getContainerWidth,
   getShadow,
   getIconSize,
-  getSafeAreaPadding,
   isSmallDevice,
   isTablet,
-  screenDimensions
-} from '../utils/responsive';
+} from "../utils/responsive"
 
 export default function QueryScreen() {
-  const { user, isAdminCreatedUser, isAuthenticated } = useUser();
-  const { isUserDarkMode } = useTheme();
-  const [queryText, setQueryText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [currentDataAnalysis, setCurrentDataAnalysis] = useState<ExcelAnalysis | null>(null);
-  const [latestFile, setLatestFile] = useState<ImportedFile | null>(null);
-  const [loadingLatestFile, setLoadingLatestFile] = useState(true);
-  const [retryingAnalysis, setRetryingAnalysis] = useState(false);
-  const [greeting, setGreeting] = useState<string>('');
-  const insets = useSafeAreaInsets();
-
-  // Set greeting when user is authenticated
-  useEffect(() => {
-    if (user && isAdminCreatedUser) {
-      const userName = user.fullName || 'User';
-      setGreeting(`Hello ${userName}!`);
-    } else if (user) {
-      const userName = user.email || 'User';
-      setGreeting(`Hello ${userName}!`);
-    } else {
-      setGreeting('');
-    }
-  }, [user, isAdminCreatedUser]);
-
-  // Load the latest imported Excel file for data context
-  const loadLatestExcelFile = async () => {
-    try {
-      if (!user || !isAuthenticated) {
-        setLoadingLatestFile(false);
-        return;
-      }
-      
-      const userId = getUserID(user, isAdminCreatedUser);
-      if (!userId) {
-        setLoadingLatestFile(false);
-        return;
-      }
-
-      console.log('🔍 Loading latest Excel file for QueryScreen...');
-      setLoadingLatestFile(true);
-      const files = await ImportedFilesService.getUserImportedFiles(userId);
-      
-      if (files.length > 0) {
-        // Get the most recent file
-        const latestFile = files[0]; // Files are ordered by uploadedAt desc
-        setLatestFile(latestFile);
-        
-        // Check if this is a different file than what we currently have
-        const isDifferentFile = !currentDataAnalysis || 
-          currentDataAnalysis.fileName !== latestFile.originalName;
-        
-        if (isDifferentFile) {
-          console.log('📊 New file detected, analyzing:', latestFile.originalName);
-          // Clear current analysis first
-          setCurrentDataAnalysis(null);
-          GeminiService.setDataContext(null);
-          
-          // Analyze the file for AI context
-          try {
-            const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName);
-            setCurrentDataAnalysis(analysis);
-            
-            // Set the context in GeminiService
-            GeminiService.setDataContext(analysis);
-            
-            console.log('✅ Excel analysis loaded for QueryScreen:', latestFile.originalName);
-          } catch (analysisError) {
-            console.error('❌ Error analyzing file for QueryScreen:', analysisError);
-            console.log('ℹ️ Continuing without Excel data analysis. Chat will work in general mode.');
-            // Store the file info even if analysis fails so user knows a file exists
-            setLatestFile(latestFile);
-            // Continue without analysis - chat will work in general mode
-          }
-        } else {
-          console.log('📊 Same file as current, skipping analysis:', latestFile.originalName);
-        }
-      } else {
-        console.log('ℹ️ No imported files found for data context');
-        // Clear current data if no files exist
-        setLatestFile(null);
-        setCurrentDataAnalysis(null);
-        GeminiService.setDataContext(null);
-      }
-    } catch (error) {
-      console.error('❌ Error loading latest file:', error);
-    } finally {
-      setLoadingLatestFile(false);
-    }
-  };
-
-  // Load latest file on component mount
-  useEffect(() => {
-    if (user && isAuthenticated) {
-      loadLatestExcelFile();
-    }
-  }, [user, isAuthenticated]);
-
-  // Refresh latest file whenever screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (user && isAuthenticated) {
-        console.log('🔄 QueryScreen focused, refreshing latest file...');
-        loadLatestExcelFile();
-      }
-    }, [user, isAuthenticated])
-  );
-
-  // Retry analysis function
-  const retryAnalysis = async () => {
-    if (!latestFile || retryingAnalysis) return;
-    
-    setRetryingAnalysis(true);
-    try {
-      console.log('🔄 Retrying Excel analysis for:', latestFile.originalName);
-      const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName);
-      setCurrentDataAnalysis(analysis);
-      GeminiService.setDataContext(analysis);
-      console.log('✅ Retry successful - Excel analysis loaded');
-    } catch (error) {
-      console.error('❌ Retry failed:', error);
-      Alert.alert('Analysis Failed', 'Could not analyze the Excel file. Please try uploading the file again in the Database tab.');
-    } finally {
-      setRetryingAnalysis(false);
-    }
-  };
-
-  const submitQuery = async () => {
-    if (!queryText.trim()) {
-      Alert.alert('Error', 'Please enter a query.');
-      return;
-    }
-
-    if (!isAuthenticated || !user) {
-      Alert.alert('Error', 'Please log in to submit a query.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Get user ID from context
-      const userId = getUserID(user, isAdminCreatedUser);
-      if (!userId) {
-        throw new Error('Unable to get user ID');
-      }
-      
-      await QueryService.submitQuery(userId, queryText.trim());
-      Alert.alert('Success', 'Your query has been submitted successfully!');
-      setQueryText('');
-    } catch (error: any) {
-      console.error('Error submitting query:', error);
-      Alert.alert('Error', 'Failed to submit your query. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleChatToggle = () => {
-    setIsChatOpen(!isChatOpen);
-  };
+  const { user, isAdminCreatedUser, isAuthenticated } = useUser()
+  const { isUserDarkMode } = useTheme()
+  const [queryText, setQueryText] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [currentDataAnalysis, setCurrentDataAnalysis] = useState<ExcelAnalysis | null>(null)
+  const [latestFile, setLatestFile] = useState<ImportedFile | null>(null)
+  const [loadingLatestFile, setLoadingLatestFile] = useState(true)
+  const [retryingAnalysis, setRetryingAnalysis] = useState(false)
+  const insets = useSafeAreaInsets()
+  const queryInputRef = useRef<TextInput>(null)
 
   // Dynamic styles based on dark mode
   const dynamicStyles = {
@@ -211,6 +58,12 @@ export default function QueryScreen() {
     },
     background: {
       backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    scrollContainer: {
+      paddingBottom: Platform.OS === "ios" ? spacing.medium + 180 : spacing.medium + 100 + insets.bottom,
+    },
+    chatbotContainer: {
+      bottom: Platform.OS === "ios" ? spacing.large + 100 : spacing.xLarge + 120,
     },
     queryCard: {
       backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
@@ -229,218 +82,322 @@ export default function QueryScreen() {
     queryInputPlaceholder: {
       color: isUserDarkMode ? "#666" : "#999",
     },
-    submitButton: {
-      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#4CAF50",
-    },
-    submitButtonText: {
-      color: isUserDarkMode ? "#81C784" : "#FFFFFF",
-    },
-    chatButton: {
-      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#2196F3",
-    },
-    chatButtonText: {
-      color: isUserDarkMode ? "#81C784" : "#FFFFFF",
-    },
-    fileInfoCard: {
-      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
-    },
-    fileInfoTitle: {
-      color: isUserDarkMode ? "#FFFFFF" : "#333",
-    },
-    fileInfoText: {
-      color: isUserDarkMode ? "#B0B0B0" : "#666",
-    },
-    fileInfoValue: {
-      color: isUserDarkMode ? "#81C784" : "#2E7D32",
+  }
+
+  const loadLatestExcelFile = async () => {
+    try {
+      if (!user || !isAuthenticated) {
+        setLoadingLatestFile(false)
+        return
+      }
+
+      const userId = getUserID(user, isAdminCreatedUser)
+      if (!userId) {
+        setLoadingLatestFile(false)
+        return
+      }
+
+      setLoadingLatestFile(true)
+      const files = await ImportedFilesService.getUserImportedFiles(userId)
+
+      if (files.length > 0) {
+        const latestFile = files[0]
+        setLatestFile(latestFile)
+
+        const isDifferentFile = !currentDataAnalysis || currentDataAnalysis.fileName !== latestFile.originalName
+
+        if (isDifferentFile) {
+          setCurrentDataAnalysis(null)
+          GeminiService.setDataContext(null)
+
+          try {
+            const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName)
+            setCurrentDataAnalysis(analysis)
+            GeminiService.setDataContext(analysis)
+          } catch (analysisError) {
+            setLatestFile(latestFile)
+          }
+        }
+      } else {
+        setLatestFile(null)
+        setCurrentDataAnalysis(null)
+        GeminiService.setDataContext(null)
+      }
+    } catch (error) {
+      console.error("Error loading latest file:", error)
+    } finally {
+      setLoadingLatestFile(false)
     }
-  };
+  }
+
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      loadLatestExcelFile()
+    }
+  }, [user, isAuthenticated])
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user && isAuthenticated) {
+        loadLatestExcelFile()
+      }
+    }, [user, isAuthenticated]),
+  )
+
+  const retryAnalysis = async () => {
+    if (!latestFile || retryingAnalysis) return
+
+    setRetryingAnalysis(true)
+    try {
+      const analysis = await ExcelAnalysisService.analyzeExcelFile(latestFile.fileUrl, latestFile.originalName)
+      setCurrentDataAnalysis(analysis)
+      GeminiService.setDataContext(analysis)
+    } catch (error) {
+      Alert.alert(
+        "Analysis Failed",
+        "Could not analyze the Excel file. Please try uploading the file again in the Database tab.",
+      )
+    } finally {
+      setRetryingAnalysis(false)
+    }
+  }
+
+  const submitQuery = async () => {
+    if (!queryText.trim()) {
+      Alert.alert("Error", "Please enter a query.")
+      return
+    }
+
+    if (!isAuthenticated || !user) {
+      Alert.alert("Error", "Please log in to submit a query.")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const userId = getUserID(user, isAdminCreatedUser)
+      if (!userId) {
+        throw new Error("Unable to get user ID")
+      }
+
+      await QueryService.submitQuery(userId, queryText.trim())
+      Alert.alert("Success", "Your query has been submitted successfully!")
+      setQueryText("")
+    } catch (error: any) {
+      Alert.alert("Error", "Failed to submit your query. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChatToggle = () => {
+    setIsChatOpen(!isChatOpen)
+  }
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss()
+    queryInputRef.current?.blur()
+  }
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <CustomHeader showLogo={true} isDatabaseScreen={false} />
-      {/* Background */}
       <View style={[styles.background, dynamicStyles.background]} />
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardContainer} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View 
-          style={styles.scrollContainer} 
-        >
-            {/* Query Card */}
-            <View style={[styles.queryCard, dynamicStyles.queryCard]}>
-              {/* Header */}
-              <View style={styles.header}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="chatbubble-ellipses" size={isTablet() ? 28 : 20} color="#059669" />
-                </View>
-                <Text style={[styles.title, dynamicStyles.queryTitle]}>Ask a Question</Text>
-                <Text style={[styles.subtitle, dynamicStyles.querySubtitle]}>
-                  Submit your queries and get expert assistance
-                </Text>
-              </View>
-
-              {/* Data Context Status */}
-              {!loadingLatestFile && (
-                <View style={styles.dataStatus}>
-                  {currentDataAnalysis ? (
-                    <View style={styles.dataConnected}>
-                      <Ionicons name="server" size={isTablet() ? 24 : 20} color="#059669" style={styles.dataStatusIcon} />
-                      <View style={styles.dataStatusText}>
-                        <Text style={styles.dataStatusTitle}>Excel Data Connected</Text>
-                        <Text style={styles.dataStatusSubtitle}>
-                          Latest File: {currentDataAnalysis.fileName} • {currentDataAnalysis.columns.length} fields
-                        </Text>
-                      </View>
-                      <View style={styles.activeBadge}>
-                        <Text style={styles.activeBadgeText}>Active</Text>
-                      </View>
-                    </View>
-                  ) : latestFile ? (
-                    <View style={styles.dataWarning}>
-                      <Ionicons name="warning" size={isTablet() ? 24 : 20} color="#d97706" style={styles.dataStatusIcon} />
-                      <View style={styles.dataStatusText}>
-                        <Text style={styles.dataStatusTitle}>File Found - Analysis Failed</Text>
-                        <Text style={styles.dataStatusSubtitle}>
-                          {latestFile.originalName} - Chat works in general mode
-                        </Text>
-                      </View>
-                      <Pressable 
-                        style={styles.retryButton} 
-                        onPress={retryAnalysis}
-                        disabled={retryingAnalysis}
-                      >
-                        <Ionicons 
-                          name="refresh" 
-                          size={isTablet() ? 18 : 16} 
-                          color="#d97706" 
-                          style={retryingAnalysis ? styles.spinningIcon : undefined}
-                        />
-                        <Text style={styles.retryButtonText}>
-                          {retryingAnalysis ? '' : ' Retry'}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <View style={styles.dataDisconnected}>
-                      <Ionicons name="document-text" size={isTablet() ? 24 : 20} color="#6b7280" style={styles.dataStatusIcon} />
-                      <View style={styles.dataStatusText}>
-                        <Text style={styles.dataStatusTitle}>No Data Connected</Text>
-                        <Text style={styles.dataStatusSubtitle}>
-                          Upload Excel files in Database tab for data-specific questions
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Query Form */}
-              <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Your Query</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      dynamicStyles.queryInput,
-                      queryText.length > 500 && { borderColor: '#ef4444', borderWidth: 2 }
-                    ]}
-                    value={queryText}
-                    onChangeText={(text) => {
-                      // Limit to 500 characters
-                      if (text.length <= 500) {
-                        setQueryText(text);
-                      }
-                    }}
-                    placeholder="Type your question or concern here..."
-                    placeholderTextColor={dynamicStyles.queryInputPlaceholder.color}
-                    multiline
-                    numberOfLines={isSmallDevice() ? 4 : isTablet() ? 6 : 5}
-                    textAlignVertical="top"
-                    maxLength={500}
-                  />
-                  <Text style={[
-                    styles.characterCount,
-                    queryText.length > 450 && { color: '#f59e0b' },
-                    queryText.length > 500 && { color: '#ef4444' }
-                  ]}>
-                    {queryText.length}/500 characters
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <View style={{ flex: 1 }}>
+          <KeyboardAvoidingView
+            style={styles.keyboardContainer}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <View style={[styles.scrollContainer, dynamicStyles.scrollContainer]}>
+              <View style={[styles.queryCard, dynamicStyles.queryCard]}>
+                <View style={styles.header}>
+                  <View style={styles.iconContainer}>
+                    <Ionicons name="chatbubble-ellipses" size={isTablet() ? 28 : 20} color="#059669" />
+                  </View>
+                  <Text style={[styles.title, dynamicStyles.queryTitle]}>Ask a Question</Text>
+                  <Text style={[styles.subtitle, dynamicStyles.querySubtitle]}>
+                    Submit your queries and get expert assistance
                   </Text>
                 </View>
 
-                <Pressable 
-                  style={[styles.button, isSubmitting && styles.buttonDisabled]} 
-                  onPress={submitQuery}
-                  disabled={isSubmitting}
-                >
-                  <LinearGradient
-                    colors={isSubmitting ? ['#9ca3af', '#6b7280'] : ['#10b981', '#059669']}
-                    style={styles.buttonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    {isSubmitting ? (
-                      <View style={styles.buttonContent}>
-                        <Ionicons name="refresh" size={isTablet() ? 20 : 18} color="#ffffff" style={styles.spinningIcon} />
-                        <Text style={styles.buttonText}>Submitting...</Text>
+                {!loadingLatestFile && (
+                  <View style={styles.dataStatus}>
+                    {currentDataAnalysis ? (
+                      <View style={styles.dataConnected}>
+                        <Ionicons
+                          name="server"
+                          size={isTablet() ? 24 : 20}
+                          color="#059669"
+                          style={styles.dataStatusIcon}
+                        />
+                        <View style={styles.dataStatusText}>
+                          <Text style={styles.dataStatusTitle}>Excel Data Connected</Text>
+                          <Text style={styles.dataStatusSubtitle}>
+                            Latest File: {currentDataAnalysis.fileName} • {currentDataAnalysis.columns.length} fields
+                          </Text>
+                        </View>
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeBadgeText}>Active</Text>
+                        </View>
+                      </View>
+                    ) : latestFile ? (
+                      <View style={styles.dataWarning}>
+                        <Ionicons
+                          name="warning"
+                          size={isTablet() ? 24 : 20}
+                          color="#d97706"
+                          style={styles.dataStatusIcon}
+                        />
+                        <View style={styles.dataStatusText}>
+                          <Text style={styles.dataStatusTitle}>File Found - Analysis Failed</Text>
+                          <Text style={styles.dataStatusSubtitle}>
+                            {latestFile.originalName} - Chat works in general mode
+                          </Text>
+                        </View>
+                        <Pressable style={styles.retryButton} onPress={retryAnalysis} disabled={retryingAnalysis}>
+                          <Ionicons
+                            name="refresh"
+                            size={isTablet() ? 18 : 16}
+                            color="#d97706"
+                            style={retryingAnalysis ? styles.spinningIcon : undefined}
+                          />
+                          <Text style={styles.retryButtonText}>{retryingAnalysis ? "" : " Retry"}</Text>
+                        </Pressable>
                       </View>
                     ) : (
-                      <Text style={styles.buttonText}>Submit Query</Text>
+                      <View style={styles.dataDisconnected}>
+                        <Ionicons
+                          name="document-text"
+                          size={isTablet() ? 24 : 20}
+                          color="#6b7280"
+                          style={styles.dataStatusIcon}
+                        />
+                        <View style={styles.dataStatusText}>
+                          <Text style={styles.dataStatusTitle}>No Data Connected</Text>
+                          <Text style={styles.dataStatusSubtitle}>
+                            Upload Excel files in Database tab for data-specific questions
+                          </Text>
+                        </View>
+                      </View>
                     )}
-                  </LinearGradient>
-                </Pressable>
+                  </View>
+                )}
 
-                {/* Tips Section */}
-                <View style={[styles.tipsContainer, dynamicStyles.queryCard]}>
-                  <View style={styles.tipsHeader}>
-                    <Ionicons name="sparkles" size={isTablet() ? 20 : 18} color={isUserDarkMode ? "#81C784" : "#059669"} />
-                    <Text style={[styles.tipsTitle, dynamicStyles.queryTitle]}>
-                      {currentDataAnalysis 
-                        ? 'AI will analyze your Excel data automatically'
-                        : 'Tips for better queries:'
-                      }
+                <View style={styles.form}>
+                  <View style={styles.inputContainer}>
+                    <View style={styles.inputHeader}>
+                      <Text style={styles.inputLabel}>Your Query</Text>
+                      {queryText.length > 0 && (
+                        <Pressable
+                          style={styles.clearButton}
+                          onPress={() => {
+                            setQueryText("")
+                            queryInputRef.current?.focus()
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={20} color="#6b7280" />
+                        </Pressable>
+                      )}
+                    </View>
+                    <TextInput
+                      ref={queryInputRef}
+                      style={[
+                        styles.input,
+                        dynamicStyles.queryInput,
+                        queryText.length > 500 && { borderColor: "#ef4444", borderWidth: 2 },
+                      ]}
+                      value={queryText}
+                      onChangeText={(text) => {
+                        if (text.length <= 500) {
+                          setQueryText(text)
+                        }
+                      }}
+                      placeholder="Type your question or concern here..."
+                      placeholderTextColor={dynamicStyles.queryInputPlaceholder.color}
+                      multiline
+                      numberOfLines={isSmallDevice() ? 4 : isTablet() ? 6 : 5}
+                      textAlignVertical="top"
+                      maxLength={500}
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={dismissKeyboard}
+                      autoCorrect={false}
+                      autoCapitalize="sentences"
+                      enablesReturnKeyAutomatically={true}
+                    />
+                    <Text
+                      style={[
+                        styles.characterCount,
+                        queryText.length > 450 && { color: "#f59e0b" },
+                        queryText.length > 500 && { color: "#ef4444" },
+                      ]}
+                    >
+                      {queryText.length}/500 characters
                     </Text>
                   </View>
-                  {currentDataAnalysis ? (
-                    <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>
-                      Ask any question about your data - the AI will automatically detect keywords, 
-                      field names, and context from your Excel file to provide intelligent answers.
-                    </Text>
-                  ) : (
-                    <View style={styles.tipsList}>
-                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• Be specific and clear</Text>
-                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• Include relevant details</Text>
-                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• We'll respond within 24 hours</Text>
-                    </View>
-                  )}
+
+                  <View style={styles.buttonContainer}>
+                    {queryText.trim() && (
+                      <Pressable
+                        style={[styles.cancelButton, isSubmitting && styles.buttonDisabled]}
+                        onPress={() => {
+                          setQueryText("")
+                          dismissKeyboard()
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </Pressable>
+                    )}
+                    <Pressable
+                      style={[styles.button, isSubmitting && styles.buttonDisabled]}
+                      onPress={submitQuery}
+                      disabled={isSubmitting}
+                    >
+                      <LinearGradient
+                        colors={isSubmitting ? ["#9ca3af", "#6b7280"] : ["#10b981", "#059669"]}
+                        style={styles.buttonGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        {isSubmitting ? (
+                          <View style={styles.buttonContent}>
+                            <Ionicons
+                              name="refresh"
+                              size={isTablet() ? 20 : 18}
+                              color="#ffffff"
+                              style={styles.spinningIcon}
+                            />
+                            <Text style={styles.buttonText}>Submitting...</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.buttonText}>Submit Query</Text>
+                        )}
+                      </LinearGradient>
+                    </Pressable>
+                  </View>
                 </View>
               </View>
+
+              <View style={styles.decorativeCircle1} />
+              <View style={styles.decorativeCircle2} />
+              <View style={styles.decorativeCircle3} />
             </View>
+          </KeyboardAvoidingView>
+        </View>
+      </TouchableWithoutFeedback>
 
-            {/* Decorative Elements */}
-            <View style={styles.decorativeCircle1} />
-            <View style={styles.decorativeCircle2} />
-            <View style={styles.decorativeCircle3} />
-          </View>
-        </KeyboardAvoidingView>
+      {!isChatOpen && (
+        <View style={[styles.chatbotContainer, dynamicStyles.chatbotContainer]}>
+          <ChatButton onPress={handleChatToggle} isOpen={isChatOpen} hasUnreadMessages={false} variant="queryScreen" />
+        </View>
+      )}
 
-      {/* Chatbot Components */}
-      <View style={styles.chatbotContainer}>
-        <ChatButton 
-          onPress={handleChatToggle}
-          isOpen={isChatOpen}
-          hasUnreadMessages={false}
-        />
-      </View>
-      
-      <ChatInterface 
-        isVisible={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        dataAnalysis={currentDataAnalysis}
-      />
+      <ChatInterface isVisible={isChatOpen} onClose={() => setIsChatOpen(false)} dataAnalysis={currentDataAnalysis} />
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -448,113 +405,125 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   background: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#E2EBDD',
+    backgroundColor: "#E2EBDD",
   },
-
   keyboardContainer: {
     flex: 1,
   },
   scrollContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
     paddingVertical: spacing.small,
-    paddingTop: Platform.OS === 'ios' ? 150 : 100,
-    paddingBottom: Platform.OS === 'ios' ? spacing.medium + 180 : spacing.medium + 80,
+    paddingTop: Platform.OS === "ios" ? 120 : 80,
   },
-
-  contentContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
-    paddingVertical: spacing.large,
-    paddingTop: Platform.OS === 'ios' ? 280 : 270,
-    paddingBottom: Platform.OS === 'ios' ? 200 : 140,
-  },
-
-
   queryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: borderRadius.xxxLarge,
     padding: isTablet() ? spacing.medium : spacing.small,
-    width: getContainerWidth(isTablet() ? 0.75 : 0.85),
-    maxWidth: 500,
+    width: getContainerWidth(isTablet() ? 0.7 : 0.8),
+    maxWidth: 450,
     ...getShadow(10),
-    elevation: Platform.OS === 'android' ? 10 : undefined,
+    elevation: Platform.OS === "android" ? 10 : undefined,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.tiny,
   },
   iconContainer: {
     width: isTablet() ? getIconSize(60) : getIconSize(45),
     height: isTablet() ? getIconSize(60) : getIconSize(45),
     borderRadius: isTablet() ? getIconSize(30) : getIconSize(22.5),
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: spacing.tiny,
-  },
-  icon: {
-    fontSize: isTablet() ? getIconSize(40) : getIconSize(30),
   },
   title: {
     fontSize: isTablet() ? fontSize.xLarge : fontSize.large,
-    fontWeight: 'bold',
-    color: '#047857',
+    fontWeight: "bold",
+    color: "#047857",
     marginBottom: spacing.tiny,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: fontSize.small,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     lineHeight: fontSize.small + 4,
     paddingHorizontal: spacing.small,
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   inputContainer: {
     marginBottom: spacing.medium,
   },
-  inputLabel: {
-    fontSize: isTablet() ? fontSize.large : fontSize.medium,
-    fontWeight: '600',
-    color: '#047857',
+  inputHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: isTablet() ? spacing.medium : spacing.small,
   },
+  inputLabel: {
+    fontSize: isTablet() ? fontSize.large : fontSize.medium,
+    fontWeight: "600",
+    color: "#047857",
+  },
+  clearButton: {
+    padding: spacing.tiny,
+  },
   input: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     padding: spacing.small,
     borderRadius: borderRadius.large,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     fontSize: fontSize.small,
-    color: '#333',
+    color: "#333",
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     maxHeight: 120,
   },
   characterCount: {
     fontSize: isTablet() ? fontSize.medium : fontSize.small,
-    color: '#999',
-    textAlign: 'right',
+    color: "#999",
+    textAlign: "right",
     marginTop: isTablet() ? spacing.medium : spacing.small,
   },
-  button: {
+  buttonContainer: {
+    flexDirection: "row",
+    gap: spacing.medium,
     marginBottom: spacing.medium,
+  },
+  button: {
+    flex: 1,
     borderRadius: borderRadius.large,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...getShadow(6),
-    elevation: Platform.OS === 'android' ? 6 : undefined,
+    elevation: Platform.OS === "android" ? 6 : undefined,
+  },
+  cancelButton: {
+    flex: 0.3,
+    borderRadius: borderRadius.large,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    backgroundColor: "#f9fafb",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: spacing.small,
+    paddingHorizontal: spacing.medium,
+  },
+  cancelButtonText: {
+    color: "#6b7280",
+    fontWeight: "600",
+    fontSize: isTablet() ? fontSize.large : fontSize.medium,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -562,100 +531,78 @@ const styles = StyleSheet.create({
   buttonGradient: {
     paddingVertical: spacing.small,
     paddingHorizontal: spacing.xxLarge,
-    alignItems: 'center',
+    alignItems: "center",
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: "#FFF",
+    fontWeight: "bold",
     fontSize: isTablet() ? fontSize.xLarge : fontSize.large,
   },
-  tipsContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    borderRadius: borderRadius.large,
-    padding: spacing.small,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
-    marginTop: spacing.small,
-  },
-  tipsTitle: {
-    fontSize: isTablet() ? fontSize.medium : fontSize.small,
-    fontWeight: '600',
-    color: '#047857',
-    marginBottom: 0,
-    marginLeft: spacing.small,
-  },
-  tipText: {
-    fontSize: isTablet() ? fontSize.medium : fontSize.small,
-    color: '#666',
-    marginBottom: isTablet() ? spacing.small : spacing.tiny,
-    lineHeight: (isTablet() ? fontSize.medium : fontSize.small) + 4,
-  },
   chatbotContainer: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? spacing.xLarge + 100 : spacing.xLarge + 40,
+    position: "absolute",
+    bottom: spacing.large + 60,
     right: spacing.large,
     zIndex: 1000,
   },
-  // Decorative elements - positioned around the card
   decorativeCircle1: {
-    position: 'absolute',
+    position: "absolute",
     top: -spacing.huge,
     left: -spacing.huge,
     width: getIconSize(80),
     height: getIconSize(80),
     borderRadius: getIconSize(40),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   decorativeCircle2: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -spacing.xLarge,
     right: -spacing.xLarge,
     width: getIconSize(60),
     height: getIconSize(60),
     borderRadius: getIconSize(30),
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   decorativeCircle3: {
-    position: 'absolute',
+    position: "absolute",
     top: spacing.large,
     right: -spacing.large,
     width: getIconSize(40),
     height: getIconSize(40),
     borderRadius: getIconSize(20),
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
   },
   dataStatus: {
     marginTop: spacing.small,
     marginBottom: spacing.small,
   },
   dataConnected: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
     borderRadius: borderRadius.medium,
     padding: spacing.small,
     borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+    borderLeftColor: "#10b981",
   },
   dataWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(217, 119, 6, 0.1)",
     borderRadius: borderRadius.medium,
     padding: spacing.small,
     borderLeftWidth: 4,
-    borderLeftColor: '#d97706',
+    borderLeftColor: "#d97706",
   },
   dataDisconnected: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(158, 158, 158, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(158, 158, 158, 0.1)",
     borderRadius: borderRadius.medium,
     padding: spacing.small,
     borderLeftWidth: 4,
-    borderLeftColor: '#9E9E9E',
+    borderLeftColor: "#9E9E9E",
   },
   dataStatusIcon: {
     fontSize: isTablet() ? fontSize.xxLarge : fontSize.xLarge,
@@ -666,57 +613,49 @@ const styles = StyleSheet.create({
   },
   dataStatusTitle: {
     fontSize: isTablet() ? fontSize.large : fontSize.medium,
-    fontWeight: '600',
-    color: '#047857',
+    fontWeight: "600",
+    color: "#047857",
     marginBottom: isTablet() ? 4 : 2,
   },
   dataStatusSubtitle: {
     fontSize: isTablet() ? fontSize.medium : fontSize.small,
-    color: '#666',
+    color: "#666",
     lineHeight: (isTablet() ? fontSize.medium : fontSize.small) + 4,
   },
   retryButton: {
-    backgroundColor: '#d97706',
+    backgroundColor: "#d97706",
     borderRadius: borderRadius.small,
     paddingHorizontal: isTablet() ? spacing.medium : spacing.small,
     paddingVertical: isTablet() ? spacing.small : spacing.tiny,
     marginLeft: isTablet() ? spacing.medium : spacing.small,
     minWidth: isTablet() ? 80 : 60,
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
   },
   retryButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: isTablet() ? fontSize.medium : fontSize.small,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   activeBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
     paddingVertical: spacing.small,
     paddingHorizontal: spacing.medium,
     borderRadius: borderRadius.medium,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: "rgba(16, 185, 129, 0.2)",
   },
   activeBadgeText: {
-    color: '#059669',
+    color: "#059669",
     fontSize: fontSize.small,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   spinningIcon: {
     marginRight: spacing.small,
   },
   buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tipsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.small,
-  },
-  tipsList: {
-    marginTop: spacing.small,
-  },
-});
+})

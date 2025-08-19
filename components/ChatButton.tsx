@@ -7,9 +7,10 @@ interface ChatButtonProps {
   onPress: () => void;
   isOpen: boolean;
   hasUnreadMessages?: boolean;
+  variant?: 'default' | 'queryScreen';
 }
 
-export default function ChatButton({ onPress, isOpen, hasUnreadMessages = false }: ChatButtonProps) {
+export default function ChatButton({ onPress, isOpen, hasUnreadMessages = false, variant = 'default' }: ChatButtonProps) {
   const scaleValue = React.useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
@@ -23,16 +24,22 @@ export default function ChatButton({ onPress, isOpen, hasUnreadMessages = false 
 
   return (
     <Animated.View style={[styles.container, { transform: [{ scale: scaleValue }] }]}>
-      <Pressable style={styles.button} onPress={onPress}>
+      <Pressable style={[
+        styles.button, 
+        variant === 'queryScreen' && styles.queryScreenButton
+      ]} onPress={onPress}>
         <LinearGradient
-          colors={['#2196F3', '#1976D2', '#0D47A1']}
-          style={styles.gradient}
+          colors={variant === 'queryScreen' ? ['#2196F3', '#1976D2', '#0D47A1'] : ['#2196F3', '#1976D2', '#0D47A1']}
+          style={[
+            styles.gradient,
+            variant === 'queryScreen' && styles.queryScreenGradient
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           <Ionicons 
             name="chatbubble-ellipses" 
-            size={26} 
+            size={variant === 'queryScreen' ? 20 : 22} 
             color="#FFF" 
           />
         </LinearGradient>
@@ -53,22 +60,22 @@ const styles = StyleSheet.create({
     // Container positioning handled by parent
   },
   button: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
     shadowColor: '#1976D2',
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 6,
     },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   gradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 32.5,
+    borderRadius: 27.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -96,5 +103,25 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: '#F44336',
+  },
+  queryScreenButton: {
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    shadowColor: '#1976D2',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  queryScreenGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32.5,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 }); 

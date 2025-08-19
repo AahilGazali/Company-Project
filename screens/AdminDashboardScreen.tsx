@@ -244,7 +244,8 @@ export default function AdminDashboardScreen() {
               Alert.alert('Success', 'Query deleted successfully!');
             } catch (error) {
               console.error('Error deleting query:', error);
-              Alert.alert('Error', `Failed to delete query: ${error.message}`);
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+              Alert.alert('Error', `Failed to delete query: ${errorMessage}`);
             } finally {
               setDeletingQueryId(null);
             }

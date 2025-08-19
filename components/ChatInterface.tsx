@@ -577,13 +577,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-            {/* Close Button */}
-            <Pressable 
-              style={styles.floatingCloseButton} 
-              onPress={onClose}
-            >
-              <Ionicons name="close" size={24} color="#FFF" />
-            </Pressable>
+
 
             {/* Messages */}
             <ScrollView
@@ -612,6 +606,14 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
               
               {isTyping && <TypingIndicator isVisible={isTyping} />}
             </ScrollView>
+
+            {/* Close Button */}
+            <Pressable 
+              style={styles.floatingCloseButton} 
+              onPress={onClose}
+            >
+              <Ionicons name="close-circle" size={24} color="#FFF" />
+            </Pressable>
 
             {/* Input Container */}
             <View style={[styles.inputContainer, dynamicStyles.inputContainer]}>
@@ -648,6 +650,8 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
                   </LinearGradient>
                 </Pressable>
               </View>
+              
+
             </View>
 
 
@@ -661,10 +665,10 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: 0,
+    top: Platform.OS === 'ios' ? 0 : 80,
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: Platform.OS === 'ios' ? 0 : 60,
     zIndex: 999,
   },
   blurContainer: {
@@ -688,7 +692,7 @@ const styles = StyleSheet.create({
     minHeight: 0, // Important for Android scrolling
   },
   messagesContent: {
-    paddingTop: Platform.OS === 'ios' ? getSafeAreaPadding().top + spacing.large : spacing.large,
+    paddingTop: Platform.OS === 'ios' ? getSafeAreaPadding().top + spacing.large : spacing.large + 20,
     paddingVertical: spacing.medium,
     paddingBottom: spacing.medium,
     flexGrow: 1, // Important for Android scrolling
@@ -696,8 +700,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     paddingHorizontal: spacing.large,
     paddingVertical: spacing.medium,
-    paddingBottom: Platform.OS === 'ios' ? 80 : 15,
-    marginBottom: Platform.OS === 'ios' ? 20 : 15,
+    paddingBottom: Platform.OS === 'ios' ? 80 : 20,
+    marginBottom: Platform.OS === 'ios' ? 20 : 20,
     borderTopWidth: 1,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
@@ -813,20 +817,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  floatingCloseButton: {
-    position: 'absolute' as const,
-    top: Platform.OS === 'ios' ? getSafeAreaPadding().top + spacing.medium : spacing.large,
-    right: spacing.large,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
+
   actionButtonsContainer: {
     marginHorizontal: spacing.large,
     marginVertical: spacing.medium,
+  },
+  floatingCloseButton: {
+    position: 'absolute' as const,
+    bottom: Platform.OS === 'ios' ? 180 : 120,
+    right: spacing.large,
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 }); 
