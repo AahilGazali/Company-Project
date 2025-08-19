@@ -29,6 +29,7 @@ import {
 import { useResponsiveDimensions } from '../hooks/useResponsiveDimensions';
 import TypingIndicator from './TypingIndicator';
 import { useTheme } from '../contexts/ThemeContext';
+import ChatCloseButton from './ChatCloseButton';
 
 const { height: screenHeight } = screenDimensions;
 
@@ -429,9 +430,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
                     </Text>
                   </View>
                 </View>
-                <Pressable style={[styles.closeButton, dynamicStyles.closeButton]} onPress={onClose}>
-                  <Ionicons name="close" size={24} color="#FFF" />
-                </Pressable>
+                {/* Close button removed from header - now using separate ChatCloseButton */}
               </View>
             </LinearGradient>
           </View>
@@ -522,6 +521,14 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
           <View style={{ marginBottom: 20 }}>
             <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
           </View>
+
+          {/* Separate Close Button - positioned to avoid input overlap */}
+          <ChatCloseButton 
+            onClose={onClose}
+            position="custom"
+            size="medium"
+            customPosition={{ top: 20, right: 20 }}
+          />
         </KeyboardAvoidingView>
       </BlurView>
     </Animated.View>
@@ -581,14 +588,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.medium, // Changed from fontSize.medium
     color: 'rgba(255, 255, 255, 0.8)',
   },
-  closeButton: {
-    width: getIconSize(40),
-    height: getIconSize(40),
-    borderRadius: getIconSize(20),
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   quickActions: {
     paddingHorizontal: spacing.large,
     paddingTop: spacing.medium, // Add top padding for spacing from header

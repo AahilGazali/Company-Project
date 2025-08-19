@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { spacing, fontSize, borderRadius, getShadow, isSmallDevice, isTablet } from '../utils/responsive';
 
 interface TableColumn {
@@ -79,7 +80,14 @@ export default function ResponsiveTable({
           </View>
         ))}
         <Pressable style={styles.addButton} onPress={onAddRow}>
-          <Text style={styles.addButtonText}>+ Add Item</Text>
+          <LinearGradient
+            colors={['#1FB515', '#118509', '#0F6C08']}
+            style={styles.addButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.addButtonText}>+ Add Item</Text>
+          </LinearGradient>
         </Pressable>
       </View>
     );
@@ -137,7 +145,14 @@ export default function ResponsiveTable({
 
         {/* Add Button */}
         <Pressable style={styles.addButton} onPress={onAddRow}>
-          <Text style={styles.addButtonText}>+ Add Item</Text>
+          <LinearGradient
+            colors={['#1FB515', '#118509', '#0F6C08']}
+            style={styles.addButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.addButtonText}>+ Add Item</Text>
+          </LinearGradient>
         </Pressable>
       </View>
     </ScrollView>
@@ -274,9 +289,11 @@ const styles = StyleSheet.create({
   },
   addButton: {
     marginTop: spacing.large,
-    paddingVertical: spacing.medium,
-    backgroundColor: '#FF9800',
     borderRadius: borderRadius.medium,
+    overflow: 'hidden',
+  },
+  addButtonGradient: {
+    paddingVertical: spacing.medium,
     alignItems: 'center',
   },
   addButtonText: {

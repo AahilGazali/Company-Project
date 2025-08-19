@@ -86,9 +86,9 @@ export default function AdminLoginScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Green Background (same palette as LoginScreen) */}
+      {/* Blue-to-Teal Background */}
       <LinearGradient
-        colors={["#4CAF50", "#2E7D32", "#1B5E20"]}
+        colors={["#71A7C8", "#3A948C", "#23716B"]}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -168,7 +168,7 @@ export default function AdminLoginScreen({ navigation }: any) {
 
                 <Pressable style={styles.button} onPress={handleAdminLogin} disabled={isLoading}>
                   <LinearGradient
-                    colors={["#4CAF50", "#2E7D32"]}
+                    colors={["#71A7C8", "#3A948C", "#23716B"]}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}

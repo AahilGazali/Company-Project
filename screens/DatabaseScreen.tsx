@@ -580,7 +580,7 @@ export default function DatabaseScreen() {
           onPress={() => setShowImportedFiles((prev) => !prev)}
         >
           <LinearGradient
-            colors={['#FF9800', '#F57C00']}
+            colors={['#1FB515', '#118509', '#0F6C08']}
             style={styles.buttonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}

@@ -201,7 +201,7 @@ export default function LoginScreen({ navigation }: any) {
 
                 <Pressable style={styles.adminButton} onPress={handleAdminLogin}>
                   <LinearGradient
-                    colors={["#FF9800", "#F57C00"]}
+                    colors={["#71A7C8", "#3A948C", "#23716B"]}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}

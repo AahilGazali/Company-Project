@@ -18,7 +18,7 @@ export default function ChatInput({ onSendMessage, isLoading = false }: ChatInpu
     container: {
       backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFF',
       borderTopColor: isUserDarkMode ? '#374151' : '#E0E0E0',
-      paddingBottom: 80, // Add bottom padding to avoid overlap with navigation tabs
+      paddingBottom: 80,
     },
     input: {
       backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
@@ -58,24 +58,29 @@ export default function ChatInput({ onSendMessage, isLoading = false }: ChatInpu
           editable={!isLoading}
           onKeyPress={handleKeyPress}
         />
-        <Pressable 
-          style={[styles.sendButton, (!message.trim() || isLoading) && styles.sendButtonDisabled]} 
-          onPress={handleSend}
-          disabled={!message.trim() || isLoading}
-        >
-          <LinearGradient
-            colors={(!message.trim() || isLoading) ? ['#9E9E9E', '#757575'] : ['#4CAF50', '#2E7D32']}
-            style={styles.sendGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+        
+        {/* Button Container - Only send button */}
+        <View style={styles.buttonContainer}>
+          {/* Send Button */}
+          <Pressable 
+            style={[styles.sendButton, (!message.trim() || isLoading) && styles.sendButtonDisabled]} 
+            onPress={handleSend}
+            disabled={!message.trim() || isLoading}
           >
-            <Ionicons 
-              name="send" 
-              size={20} 
-              color="#FFF" 
-            />
-          </LinearGradient>
-        </Pressable>
+            <LinearGradient
+              colors={(!message.trim() || isLoading) ? ['#9E9E9E', '#757575'] : ['#4CAF50', '#2E7D32']}
+              style={styles.sendGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons 
+                name="send" 
+                size={20} 
+                color="#FFF" 
+              />
+            </LinearGradient>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -106,10 +111,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  buttonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     shadowColor: '#2E7D32',
     shadowOffset: {
       width: 0,
@@ -126,7 +135,7 @@ const styles = StyleSheet.create({
   sendGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

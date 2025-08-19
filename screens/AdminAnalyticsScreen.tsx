@@ -218,7 +218,7 @@ export default function AdminAnalyticsScreen() {
                     <Text style={[styles.legendText, dynamicStyles.legendText]}>Users</Text>
                   </View>
                   <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
+                    <View style={[styles.legendDot, { backgroundColor: "#71A7C8" }]} />
                     <Text style={[styles.legendText, dynamicStyles.legendText]}>Reports</Text>
                   </View>
                 </View>
@@ -233,7 +233,7 @@ export default function AdminAnalyticsScreen() {
                         }]} />
                         <View style={[styles.bar, { 
                           height: (data.reports / maxReports) * 120, 
-                          backgroundColor: "#FF9800" 
+                          backgroundColor: "#71A7C8" 
                         }]} />
                       </View>
                       <Text style={[styles.chartLabel, dynamicStyles.chartLabel]}>{data.month}</Text>

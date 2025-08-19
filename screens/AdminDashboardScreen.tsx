@@ -203,8 +203,8 @@ export default function AdminDashboardScreen() {
       change: users.filter(u => u.status === "Inactive").length > 0 ? 
         `${users.filter(u => u.status === "Inactive").length} inactive` : "All users active",
       icon: "checkmark-circle",
-      color: "#FF9800",
-      gradient: ["#FF9800", "#F57C00"] as const
+      color: "#71A7C8",
+      gradient: ["#71A7C8", "#3A948C", "#23716B"] as const
     }
   ]
 
