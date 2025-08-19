@@ -31,7 +31,7 @@ export default function ChatButton({ onPress, isOpen, hasUnreadMessages = false 
           end={{ x: 1, y: 1 }}
         >
           <Ionicons 
-            name={isOpen ? "close" : "chatbubble-ellipses"} 
+            name="chatbubble-ellipses" 
             size={26} 
             color="#FFF" 
           />

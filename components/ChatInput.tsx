@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TextInput, Pressable, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -12,13 +13,14 @@ interface ChatInputProps {
 export default function ChatInput({ onSendMessage, isLoading = false }: ChatInputProps) {
   const { isUserDarkMode } = useTheme();
   const [message, setMessage] = useState('');
+  const insets = useSafeAreaInsets();
 
   // Dynamic styles based on dark mode
   const dynamicStyles = {
     container: {
-      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFF',
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFFFFF',
       borderTopColor: isUserDarkMode ? '#374151' : '#E0E0E0',
-      paddingBottom: 80,
+      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom + 80, 100) : 100,
     },
     input: {
       backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
@@ -57,30 +59,29 @@ export default function ChatInput({ onSendMessage, isLoading = false }: ChatInpu
           maxLength={500}
           editable={!isLoading}
           onKeyPress={handleKeyPress}
+          scrollEnabled={Platform.OS === 'ios'}
+          textAlignVertical="center"
         />
         
-        {/* Button Container - Only send button */}
-        <View style={styles.buttonContainer}>
-          {/* Send Button */}
-          <Pressable 
-            style={[styles.sendButton, (!message.trim() || isLoading) && styles.sendButtonDisabled]} 
-            onPress={handleSend}
-            disabled={!message.trim() || isLoading}
+        {/* Send Button */}
+        <Pressable 
+          style={[styles.sendButton, (!message.trim() || isLoading) && styles.sendButtonDisabled]} 
+          onPress={handleSend}
+          disabled={!message.trim() || isLoading}
+        >
+          <LinearGradient
+            colors={(!message.trim() || isLoading) ? ['#9E9E9E', '#757575'] : ['#4CAF50', '#2E7D32']}
+            style={styles.sendGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
           >
-            <LinearGradient
-              colors={(!message.trim() || isLoading) ? ['#9E9E9E', '#757575'] : ['#4CAF50', '#2E7D32']}
-              style={styles.sendGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons 
-                name="send" 
-                size={20} 
-                color="#FFF" 
-              />
-            </LinearGradient>
-          </Pressable>
-        </View>
+            <Ionicons 
+              name="send" 
+              size={20} 
+              color="#FFF" 
+            />
+          </LinearGradient>
+        </Pressable>
       </View>
     </View>
   );
@@ -92,33 +93,39 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 12,
+    minHeight: 50,
   },
   input: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    borderRadius: 20,
+    borderRadius: 25,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     color: '#333',
     maxHeight: 100,
+    minHeight: 50,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  buttonContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     shadowColor: '#2E7D32',
     shadowOffset: {
       width: 0,
@@ -135,7 +142,7 @@ const styles = StyleSheet.create({
   sendGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
   },

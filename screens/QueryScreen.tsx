@@ -15,8 +15,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
-import { db, auth } from '../firebaseConfig';
+import { onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
+import { auth } from '../firebaseConfig';
+import { QueryService } from '../services/queryService';
 import ChatButton from '../components/ChatButton';
 import ChatInterface from '../components/ChatInterface';
 import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
@@ -175,16 +176,20 @@ export default function QueryScreen() {
       return;
     }
 
+    if (!isAuthenticated || !user) {
+      Alert.alert('Error', 'Please log in to submit a query.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const user = auth.currentUser;
-      await addDoc(collection(db, 'queries'), {
-        userId: user?.uid || 'anonymous',
-        query: queryText.trim(),
-        status: 'open',
-        createdAt: serverTimestamp(),
-      });
-
+      // Get user ID from context
+      const userId = getUserID(user, isAdminCreatedUser);
+      if (!userId) {
+        throw new Error('Unable to get user ID');
+      }
+      
+      await QueryService.submitQuery(userId, queryText.trim());
       Alert.alert('Success', 'Your query has been submitted successfully!');
       setQueryText('');
     } catch (error: any) {
@@ -260,10 +265,8 @@ export default function QueryScreen() {
         style={styles.keyboardContainer} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <View 
+          style={styles.scrollContainer} 
         >
             {/* Query Card */}
             <View style={[styles.queryCard, dynamicStyles.queryCard]}>
@@ -419,7 +422,7 @@ export default function QueryScreen() {
             <View style={styles.decorativeCircle1} />
             <View style={styles.decorativeCircle2} />
             <View style={styles.decorativeCircle3} />
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
 
       {/* Chatbot Components */}
@@ -457,13 +460,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    flexGrow: 1,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
     paddingVertical: spacing.small,
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: Platform.OS === 'ios' ? spacing.medium + 120 : spacing.medium + 80,
+    paddingTop: Platform.OS === 'ios' ? 150 : 100,
+    paddingBottom: Platform.OS === 'ios' ? spacing.medium + 180 : spacing.medium + 80,
   },
 
   contentContainer: {

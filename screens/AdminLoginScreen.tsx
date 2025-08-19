@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize.huge,
     fontWeight: "bold",
-    color: "#2E7D32",
+    color: "#5A8BA8",
     marginBottom: spacing.small,
     textAlign: "center",
   },
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: fontSize.medium,
     fontWeight: "600",
-    color: "#2E7D32",
+    color: "#5A8BA8",
     marginBottom: spacing.small,
   },
   input: {
@@ -314,4 +314,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 })
-

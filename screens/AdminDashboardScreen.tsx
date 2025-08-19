@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { Ionicons } from "@expo/vector-icons"
 import { db } from "../firebaseConfig"
-import { collection, getDocs, query, orderBy, limit, where } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, limit, where, onSnapshot } from "firebase/firestore"
+import { QueryService, QueryWithUser } from "../services/queryService"
+import { Alert } from "react-native"
 import { useTheme } from "../contexts/ThemeContext"
 import CustomHeader from "../components/CustomHeader"
 import { 
@@ -61,100 +63,130 @@ export default function AdminDashboardScreen() {
   const [users, setUsers] = useState<User[]>([])
   const [programs, setPrograms] = useState<Program[]>([])
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+  const [employeeQueries, setEmployeeQueries] = useState<QueryWithUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [greeting, setGreeting] = useState<string>('');
+  const [deletingQueryId, setDeletingQueryId] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   // Set greeting for admin users
   useEffect(() => {
     setGreeting('HELLO ADMIN!');
   }, []);
 
-  const fetchDashboardData = async () => {
+  const setupRealTimeListeners = () => {
     try {
       setIsLoading(true)
       
-      // Fetch users
+      // Set up real-time listener for users
       const usersQuery = query(collection(db, "users"), orderBy("createdAt", "desc"))
-      const usersSnapshot = await getDocs(usersQuery)
-      const fetchedUsers: User[] = []
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data()
-        fetchedUsers.push({
-          id: doc.id,
-          fullName: userData.fullName || "Unknown",
-          email: userData.email || "",
-          projectName: userData.projectName || "",
-          employeeId: userData.employeeId || "",
-          role: userData.role || "User",
-          status: userData.status || "Active",
-          lastLogin: userData.lastLogin || null,
-          createdAt: userData.createdAt
+      const unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+        const fetchedUsers: User[] = []
+        snapshot.forEach((doc) => {
+          const userData = doc.data()
+          fetchedUsers.push({
+            id: doc.id,
+            fullName: userData.fullName || "Unknown",
+            email: userData.email || "",
+            projectName: userData.projectName || "",
+            employeeId: userData.employeeId || "",
+            role: userData.role || "User",
+            status: userData.status || "Active",
+            lastLogin: userData.lastLogin || null,
+            createdAt: userData.createdAt
+          })
         })
+        setUsers(fetchedUsers)
+        
+        // Generate recent activities from user data
+        const activities: RecentActivity[] = []
+        
+        // Add recent user registrations
+        fetchedUsers.slice(0, 5).forEach((user) => {
+          if (user.createdAt) {
+            activities.push({
+              id: `user-${user.id}`,
+              type: "user-registration",
+              description: `New user registered: ${user.fullName}`,
+              timestamp: user.createdAt,
+              userFullName: user.fullName
+            })
+          }
+        })
+
+        // Add recent status changes (if any users were recently deactivated/activated)
+        fetchedUsers.forEach((user) => {
+          if (user.status === "Inactive") {
+            activities.push({
+              id: `status-${user.id}`,
+              type: "status-change",
+              description: `User deactivated: ${user.fullName}`,
+              timestamp: user.createdAt,
+              userFullName: user.fullName
+            })
+          }
+        })
+
+        // Sort activities by timestamp
+        activities.sort((a, b) => {
+          if (a.timestamp && b.timestamp) {
+            return b.timestamp.toDate() - a.timestamp.toDate()
+          }
+          return 0
+        })
+
+        setRecentActivities(activities.slice(0, 5))
+      }, (error) => {
+        console.error("Error listening to users:", error)
       })
-      setUsers(fetchedUsers)
+
+      // Store the unsubscribe function in ref
+      unsubscribeRef.current = unsubscribeUsers
 
       // Fetch programs (if programs collection exists)
-      try {
-        const programsQuery = query(collection(db, "programs"), orderBy("createdAt", "desc"))
-        const programsSnapshot = await getDocs(programsQuery)
-        const fetchedPrograms: Program[] = []
-        programsSnapshot.forEach((doc) => {
-          const programData = doc.data()
-          fetchedPrograms.push({
-            id: doc.id,
-            name: programData.name || "Unknown Program",
-            status: programData.status || "Active",
-            createdAt: programData.createdAt
+      const fetchPrograms = async () => {
+        try {
+          const programsQuery = query(collection(db, "programs"), orderBy("createdAt", "desc"))
+          const programsSnapshot = await getDocs(programsQuery)
+          const fetchedPrograms: Program[] = []
+          programsSnapshot.forEach((doc) => {
+            const programData = doc.data()
+            fetchedPrograms.push({
+              id: doc.id,
+              name: programData.name || "Unknown Program",
+              status: programData.status || "Active",
+              createdAt: programData.createdAt
+            })
           })
-        })
-        setPrograms(fetchedPrograms)
-      } catch (error) {
-        console.log("Programs collection not found, using default")
-        setPrograms([])
+          setPrograms(fetchedPrograms)
+        } catch (error) {
+          console.log("Programs collection not found, using default")
+          setPrograms([])
+        }
       }
 
-      // Generate recent activities from user data
-      const activities: RecentActivity[] = []
-      
-      // Add recent user registrations
-      fetchedUsers.slice(0, 5).forEach((user) => {
-        if (user.createdAt) {
-          activities.push({
-            id: `user-${user.id}`,
-            type: "user-registration",
-            description: `New user registered: ${user.fullName}`,
-            timestamp: user.createdAt,
-            userFullName: user.fullName
-          })
+      // Fetch employee queries
+      const fetchQueries = async () => {
+        try {
+          const queries = await QueryService.getQueriesWithUsers(5);
+          console.log('Fetched employee queries:', queries.map(q => ({ 
+            id: q.id, 
+            userFullName: q.userFullName, 
+            query: q.query ? (q.query.substring(0, 30) + '...') : 'No query text'
+          })));
+          setEmployeeQueries(queries);
+        } catch (error) {
+          console.error("Error fetching employee queries:", error);
         }
-      })
+      }
 
-      // Add recent status changes (if any users were recently deactivated/activated)
-      fetchedUsers.forEach((user) => {
-        if (user.status === "Inactive") {
-          activities.push({
-            id: `status-${user.id}`,
-            type: "status-change",
-            description: `User deactivated: ${user.fullName}`,
-            timestamp: user.createdAt,
-            userFullName: user.fullName
-          })
-        }
-      })
-
-      // Sort activities by timestamp
-      activities.sort((a, b) => {
-        if (a.timestamp && b.timestamp) {
-          return b.timestamp.toDate() - a.timestamp.toDate()
-        }
-        return 0
-      })
-
-      setRecentActivities(activities.slice(0, 5))
+      // Execute async operations
+      fetchPrograms();
+      fetchQueries();
 
     } catch (error) {
-      console.error("Error fetching dashboard data:", error)
+      console.error("Error setting up real-time listeners:", error)
     } finally {
       setIsLoading(false)
     }
@@ -162,12 +194,74 @@ export default function AdminDashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await fetchDashboardData()
+    // Refresh employee queries
+    try {
+      const queries = await QueryService.getQueriesWithUsers(5);
+      setEmployeeQueries(queries);
+    } catch (error) {
+      console.error("Error refreshing employee queries:", error);
+    }
     setRefreshing(false)
   }
 
+  const handleDeleteQuery = async (queryId: string, userFullName: string, queryText: string) => {
+    console.log('Attempting to delete query:', { queryId, userFullName, queryText });
+    
+    // Validate queryId
+    if (!queryId || queryId.trim() === '') {
+      console.error('Invalid queryId:', queryId);
+      Alert.alert('Error', 'Invalid query ID. Cannot delete.');
+      return;
+    }
+    
+    Alert.alert(
+      'Delete Query',
+      `Are you sure you want to delete this query from ${userFullName}?\n\n"${queryText.substring(0, 50)}${queryText.length > 50 ? '...' : ''}"`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Delete confirmed for queryId:', queryId);
+              setDeletingQueryId(queryId);
+              
+              await QueryService.deleteQuery(queryId);
+              console.log('QueryService.deleteQuery completed successfully');
+              
+              // Remove the query from local state
+              setEmployeeQueries(prev => {
+                const filtered = prev.filter(query => query.id !== queryId);
+                console.log('Updated queries list, removed queryId:', queryId);
+                console.log('Remaining queries:', filtered.length);
+                return filtered;
+              });
+              
+              Alert.alert('Success', 'Query deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting query:', error);
+              Alert.alert('Error', `Failed to delete query: ${error.message}`);
+            } finally {
+              setDeletingQueryId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
-    fetchDashboardData()
+    setupRealTimeListeners();
+    
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
   }, [])
 
   const getTimeAgo = (timestamp: any) => {
@@ -189,20 +283,38 @@ export default function AdminDashboardScreen() {
 
   const statsData = [
     {
-      title: "Total Users",
-      value: users.length.toString(),
-      change: users.filter(u => u.status === "Active").length > 0 ? 
-        `+${users.filter(u => u.status === "Active").length} active` : "No active users",
+      title: "Total Employees",
+      value: users.filter(u => u.role === "Employee").length.toString(),
+      change: users.filter(u => u.role === "Employee" && u.status === "Active").length > 0 ? 
+        `+${users.filter(u => u.role === "Employee" && u.status === "Active").length} active` : "No active employees",
       icon: "people",
       color: "#4CAF50",
       gradient: ["#4CAF50", "#2E7D32"] as const
     },
     {
-      title: "Active Users",
-      value: users.filter(u => u.status === "Active").length.toString(),
-      change: users.filter(u => u.status === "Inactive").length > 0 ? 
-        `${users.filter(u => u.status === "Inactive").length} inactive` : "All users active",
+      title: "Active Employees",
+      value: users.filter(u => u.role === "Employee" && u.status === "Active").length.toString(),
+      change: users.filter(u => u.role === "Employee" && u.status === "Inactive").length > 0 ? 
+        `${users.filter(u => u.role === "Employee" && u.status === "Inactive").length} inactive` : "All employees active",
       icon: "checkmark-circle",
+      color: "#4CAF50",
+      gradient: ["#4CAF50", "#2E7D32"] as const
+    },
+    {
+      title: "Total Managers",
+      value: users.filter(u => u.role === "Manager").length.toString(),
+      change: users.filter(u => u.role === "Manager" && u.status === "Active").length > 0 ? 
+        `+${users.filter(u => u.role === "Manager" && u.status === "Active").length} active` : "No active managers",
+      icon: "person",
+      color: "#71A7C8",
+      gradient: ["#71A7C8", "#3A948C", "#23716B"] as const
+    },
+    {
+      title: "Active Managers",
+      value: users.filter(u => u.role === "Manager" && u.status === "Active").length.toString(),
+      change: users.filter(u => u.role === "Manager" && u.status === "Inactive").length > 0 ? 
+        `${users.filter(u => u.role === "Manager" && u.status === "Inactive").length} inactive` : "All managers active",
+      icon: "person-circle",
       color: "#71A7C8",
       gradient: ["#71A7C8", "#3A948C", "#23716B"] as const
     }
@@ -309,6 +421,58 @@ export default function AdminDashboardScreen() {
             </View>
 
 
+
+            {/* Employees Query Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Employees Query</Text>
+              <View style={[styles.activityCard, dynamicStyles.activityCard]}>
+                {employeeQueries.length === 0 ? (
+                  <Text style={[styles.noActivityText, dynamicStyles.noActivityText]}>No employee queries to show.</Text>
+                ) : (
+                  employeeQueries
+                    .filter(query => query.id && query.id !== 'queries' && query.query) // Filter out invalid queries
+                    .map((query, index) => (
+                    <View key={query.id} style={styles.activityItem}>
+                      <View style={[styles.activityIcon, dynamicStyles.activityIcon]}>
+                        <Ionicons name="chatbubble-ellipses" size={20} color="#2196F3" />
+                      </View>
+                      <View style={styles.activityContent}>
+                        <Text style={[styles.activityText, dynamicStyles.activityText]}>
+                          <Text style={{ fontWeight: 'bold', color: isDarkMode ? '#81C784' : '#2E7D32' }}>
+                            {query.userFullName || 'Unknown User'}:
+                          </Text> {query.query || 'No query text'}
+                        </Text>
+                        <Text style={[styles.activityTime, dynamicStyles.activityTime]}>
+                          {getTimeAgo(query.createdAt)} • {query.status || 'unknown'}
+                        </Text>
+                      </View>
+                      <Pressable
+                        style={[
+                          styles.deleteButton,
+                          deletingQueryId === query.id && styles.deleteButtonDisabled
+                        ]}
+                        onPress={() => {
+                          console.log('Delete button pressed for query:', {
+                            id: query.id,
+                            userFullName: query.userFullName,
+                            query: query.query,
+                            index: index
+                          });
+                          handleDeleteQuery(query.id, query.userFullName || 'Unknown User', query.query || '');
+                        }}
+                        disabled={deletingQueryId === query.id}
+                      >
+                        {deletingQueryId === query.id ? (
+                          <Ionicons name="refresh" size={16} color="#FFF" style={styles.spinningIcon} />
+                        ) : (
+                          <Ionicons name="trash" size={16} color="#FFF" />
+                        )}
+                      </Pressable>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
 
             {/* Recent Activity */}
             <View style={styles.section}>
@@ -477,6 +641,22 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: fontSize.small,
     color: "#666",
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F44336",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: spacing.small,
+    ...getShadow(2),
+  },
+  deleteButtonDisabled: {
+    backgroundColor: "#9E9E9E",
+  },
+  spinningIcon: {
+    transform: [{ rotate: '360deg' }],
   },
 })
 
