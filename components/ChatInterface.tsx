@@ -50,12 +50,22 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
 
   // Keyboard listeners
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-      setIsKeyboardVisible(true)
-    })
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setIsKeyboardVisible(false)
-    })
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', 
+      () => {
+        setIsKeyboardVisible(true)
+        // Scroll to bottom when keyboard appears
+        setTimeout(() => {
+          scrollToBottom()
+        }, 100)
+      }
+    )
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', 
+      () => {
+        setIsKeyboardVisible(false)
+      }
+    )
 
     return () => {
       keyboardDidShowListener?.remove()
@@ -79,8 +89,8 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     inputContainer: {
       paddingHorizontal: spacing.large,
       paddingVertical: isKeyboardVisible ? spacing.small : spacing.medium,
-      paddingBottom: isKeyboardVisible ? 10 : (Platform.OS === 'ios' ? 65 : 15),
-      marginBottom: isKeyboardVisible ? 5 : (Platform.OS === 'ios' ? 10 : 15),
+      paddingBottom: isKeyboardVisible ? 10 : (Platform.OS === 'ios' ? 65 : 25),
+      marginBottom: isKeyboardVisible ? 5 : (Platform.OS === 'ios' ? 10 : 20),
       borderTopWidth: 1,
       backgroundColor: isUserDarkMode ? '#2D2D2D' : '#FFFFFF',
       shadowColor: '#000',
@@ -91,25 +101,29 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 8,
+      position: 'relative',
+      zIndex: 1000,
     },
     inputWrapper: {
       flexDirection: 'row',
       alignItems: 'flex-end',
       gap: spacing.medium,
-      minHeight: isKeyboardVisible ? 40 : 50,
+      minHeight: isKeyboardVisible ? 50 : 60,
+      paddingVertical: Platform.OS === 'android' ? 5 : 0,
     },
     input: {
       flex: 1,
       backgroundColor: isUserDarkMode ? '#374151' : '#F8F9FA',
       borderRadius: 20,
-      paddingHorizontal: 8,
-      paddingVertical: isKeyboardVisible ? 2 : 4,
+      paddingHorizontal: 12,
+      paddingVertical: isKeyboardVisible ? 8 : 12,
       fontSize: 16,
       color: isUserDarkMode ? '#FFFFFF' : '#333',
-      maxHeight: isKeyboardVisible ? 60 : 80,
-      minHeight: isKeyboardVisible ? 35 : 40,
+      maxHeight: isKeyboardVisible ? 80 : 100,
+      minHeight: isKeyboardVisible ? 40 : 50,
       borderWidth: 1,
       borderColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+      textAlignVertical: 'top', // Important for Android multiline
     },
     inputPlaceholder: {
       color: isUserDarkMode ? "#9CA3AF" : "#A5A5A5",
@@ -231,8 +245,10 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
 
   const scrollToBottom = () => {
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true })
-    }, 100)
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollToEnd({ animated: true })
+      }
+    }, Platform.OS === 'android' ? 200 : 100)
   }
 
   const addMessage = (text: string, isUser: boolean) => {
@@ -558,7 +574,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <SafeAreaView style={[styles.container, dynamicStyles.container]}>
             {/* Close Button */}
@@ -576,6 +592,8 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
               contentContainerStyle={styles.messagesContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+              removeClippedSubviews={Platform.OS === 'android'}
             >
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
@@ -655,6 +673,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    position: 'relative',
   },
 
   headerGradient: {
@@ -666,11 +685,13 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     paddingHorizontal: spacing.large,
+    minHeight: 0, // Important for Android scrolling
   },
   messagesContent: {
-    paddingTop: getSafeAreaPadding().top + spacing.large,
+    paddingTop: Platform.OS === 'ios' ? getSafeAreaPadding().top + spacing.large : spacing.large,
     paddingVertical: spacing.medium,
     paddingBottom: spacing.medium,
+    flexGrow: 1, // Important for Android scrolling
   },
   inputContainer: {
     paddingHorizontal: spacing.large,
@@ -794,7 +815,7 @@ const styles = StyleSheet.create({
   },
   floatingCloseButton: {
     position: 'absolute' as const,
-    top: getSafeAreaPadding().top + spacing.medium,
+    top: Platform.OS === 'ios' ? getSafeAreaPadding().top + spacing.medium : spacing.large,
     right: spacing.large,
     width: 40,
     height: 40,
