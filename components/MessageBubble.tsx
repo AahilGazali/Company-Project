@@ -3,17 +3,36 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChatMessage } from '../services/geminiService';
 import { spacing, fontSize, borderRadius, getShadow } from '../utils/responsive';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
+  const { isUserDarkMode } = useTheme();
   const isUser = message.isUser;
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    botBubble: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
+      borderColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+    botText: {
+      color: isUserDarkMode ? '#FFFFFF' : '#333',
+    },
+    userTimestamp: {
+      color: isUserDarkMode ? '#9CA3AF' : '#666',
+    },
+    botTimestamp: {
+      color: isUserDarkMode ? '#9CA3AF' : '#666',
+    },
+  };
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.botContainer]}>
-      <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
+      <View style={[styles.bubble, isUser ? styles.userBubble : [styles.botBubble, dynamicStyles.botBubble]]}>
         {isUser ? (
           <LinearGradient
             colors={['#4CAF50', '#2E7D32']}
@@ -24,10 +43,10 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <Text style={styles.userText}>{message.text}</Text>
           </LinearGradient>
         ) : (
-          <Text style={styles.botText}>{message.text}</Text>
+          <Text style={[styles.botText, dynamicStyles.botText]}>{message.text}</Text>
         )}
       </View>
-      <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.botTimestamp]}>
+      <Text style={[styles.timestamp, isUser ? [styles.userTimestamp, dynamicStyles.userTimestamp] : [styles.botTimestamp, dynamicStyles.botTimestamp]]}>
         {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </Text>
     </View>

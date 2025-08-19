@@ -137,7 +137,7 @@ export default function AdminProfileScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      <CustomHeader showLogo={true} isDatabaseScreen={false} isAdmin={true} />
       
       <View style={styles.contentContainer}>
         {/* Profile Summary */}

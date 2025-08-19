@@ -4,6 +4,7 @@ import { View, StyleSheet, Platform, Animated, Text, Pressable } from "react-nat
 import { LinearGradient } from "expo-linear-gradient"
 import { BlurView } from "expo-blur"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTheme } from "../contexts/ThemeContext"
 import { 
   spacing, 
   fontSize, 
@@ -91,12 +92,13 @@ const TabBarIcon = ({
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets()
   const safeArea = getSafeAreaPadding()
+  const { isUserDarkMode } = useTheme()
 
   return (
     <View style={[styles.customTabBar, { paddingBottom: Math.max(insets.bottom, safeArea.bottom) }]}>
-      <View style={styles.tabBarBackground}>
+      <View style={[styles.tabBarBackground, isUserDarkMode && styles.darkTabBarBackground]}>
         <LinearGradient
-          colors={["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
+          colors={isUserDarkMode ? ["#2D2D2D", "#1E1E1E", "#1A1A1A"] : ["#FFFFFF", "#FAFAFA", "#F8F9FA"]}
           style={styles.tabBarGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -138,13 +140,14 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
             <View style={styles.customTabContent}>
               <TabBarIcon 
                 name={iconName} 
-                color={isFocused ? "#2E7D32" : "#6B7280"} 
+                color={isFocused ? (isUserDarkMode ? "#81C784" : "#2E7D32") : (isUserDarkMode ? "#B0B0B0" : "#6B7280")} 
                 size={getIconSize(isFocused ? 22 : 18)} 
                 focused={isFocused} 
               />
               <Text style={[
                 styles.customTabLabel,
-                { color: isFocused ? "#2E7D32" : "#6B7280" }
+                isUserDarkMode && styles.darkCustomTabLabel,
+                { color: isFocused ? (isUserDarkMode ? "#81C784" : "#2E7D32") : (isUserDarkMode ? "#B0B0B0" : "#6B7280") }
               ]}>
                 {label}
               </Text>
@@ -157,8 +160,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 }
 
 export default function HomeTabs() {
+  const { isDarkMode } = useTheme()
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
       <Tab.Navigator
         initialRouteName="Database"
         tabBar={props => <CustomTabBar {...props} />}
@@ -211,6 +215,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F0F4F3',
   },
+  darkContainer: {
+    backgroundColor: '#1A1A1A',
+  },
   tabBar: {
     backgroundColor: "transparent",
     borderTopWidth: 0,
@@ -219,6 +226,16 @@ const styles = StyleSheet.create({
     ...getShadow(12),
   },
   tabBarBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: borderRadius.xxxLarge,
+    borderTopRightRadius: borderRadius.xxxLarge,
+    overflow: "hidden",
+  },
+  darkTabBarBackground: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -328,9 +345,11 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderTopWidth: 0,
     paddingTop: spacing.large,
-    paddingHorizontal: spacing.medium,
+    paddingHorizontal: 0,
     height: (isTablet() ? 100 : Platform.OS === "ios" ? 95 : 80),
     flexDirection: "row",
+    justifyContent: "space-evenly",
+    alignItems: "center",
     ...getShadow(12),
   },
   customTabItem: {
@@ -338,8 +357,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing.small,
-    paddingHorizontal: spacing.small,
-    minWidth: 80,
+    paddingHorizontal: 0,
+    minWidth: 0,
+    maxWidth: "20%",
   },
   customTabContent: {
     alignItems: "center",
@@ -353,5 +373,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     includeFontPadding: false,
     textAlignVertical: "center",
+    color: "#2E7D32",
+  },
+  darkCustomTabLabel: {
+    fontSize: fontSize.tiny,
+    fontWeight: "600",
+    marginTop: spacing.tiny,
+    letterSpacing: 0.2,
+    textAlign: "center",
+    includeFontPadding: false,
+    textAlignVertical: "center",
+    color: "#81C784",
   },
 })

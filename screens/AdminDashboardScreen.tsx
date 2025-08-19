@@ -265,7 +265,7 @@ export default function AdminDashboardScreen() {
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
-      <CustomHeader showLogo={true} isDatabaseScreen={true} greeting={greeting} />
+      <CustomHeader showLogo={true} isDatabaseScreen={true} greeting={greeting} isAdmin={true} />
 
       <ScrollView 
         style={styles.scrollView}

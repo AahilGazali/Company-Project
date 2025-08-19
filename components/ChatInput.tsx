@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -9,7 +10,25 @@ interface ChatInputProps {
 }
 
 export default function ChatInput({ onSendMessage, isLoading = false }: ChatInputProps) {
+  const { isUserDarkMode } = useTheme();
   const [message, setMessage] = useState('');
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFF',
+      borderTopColor: isUserDarkMode ? '#374151' : '#E0E0E0',
+      paddingBottom: 80, // Add bottom padding to avoid overlap with navigation tabs
+    },
+    input: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
+      color: isUserDarkMode ? '#FFFFFF' : '#333',
+      borderColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+    inputPlaceholder: {
+      color: isUserDarkMode ? '#9CA3AF' : '#A5A5A5',
+    },
+  };
 
   const handleSend = () => {
     if (message.trim() && !isLoading) {
@@ -26,14 +45,14 @@ export default function ChatInput({ onSendMessage, isLoading = false }: ChatInpu
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, dynamicStyles.input]}
           value={message}
           onChangeText={setMessage}
           placeholder="Type your message..."
-          placeholderTextColor="#A5A5A5"
+          placeholderTextColor={dynamicStyles.inputPlaceholder.color}
           multiline
           maxLength={500}
           editable={!isLoading}

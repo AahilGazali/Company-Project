@@ -9,12 +9,14 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import CustomHeader from '../components/CustomHeader';
 import { 
   spacing, 
@@ -35,6 +37,7 @@ interface UserData {
   email?: string;
   projectName?: string;
   employeeId?: string;
+  role?: string;
   createdAt?: any;
 }
 
@@ -44,6 +47,62 @@ export default function ProfileScreen({ navigation }: any) {
   const [user, setUser] = useState<any>(null);
   const [greeting, setGreeting] = useState<string>('');
   const { user: contextUser, logout: contextLogout, isAuthenticated } = useUser();
+  const { isUserDarkMode, toggleUserDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#E2EBDD",
+    },
+    background: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#E2EBDD",
+    },
+    profileCard: {
+      backgroundColor: isUserDarkMode ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+    },
+    title: {
+      color: isUserDarkMode ? "#FFFFFF" : "#2E7D32",
+    },
+    subtitle: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    sectionTitle: {
+      color: isUserDarkMode ? "#81C784" : "#2E7D32",
+    },
+    infoItem: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    infoLabel: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    infoValue: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    infoIcon: {
+      backgroundColor: isUserDarkMode ? "rgba(129, 199, 132, 0.2)" : "rgba(46, 125, 50, 0.1)",
+    },
+    darkModeButton: {
+      backgroundColor: isUserDarkMode ? "rgba(255, 215, 0, 0.2)" : "rgba(76, 175, 80, 0.1)",
+      borderColor: isUserDarkMode ? "rgba(255, 215, 0, 0.4)" : "rgba(76, 175, 80, 0.3)",
+    },
+    logoutButton: {
+      borderColor: isUserDarkMode ? "#F44336" : "#F44336",
+      backgroundColor: isUserDarkMode ? "rgba(244, 67, 54, 0.1)" : "transparent",
+    },
+    logoutButtonText: {
+      color: isUserDarkMode ? "#FF6B6B" : "#F44336",
+    },
+    decorativeCircle1: {
+      backgroundColor: isUserDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.1)",
+    },
+    decorativeCircle2: {
+      backgroundColor: isUserDarkMode ? "rgba(255, 255, 255, 0.03)" : "rgba(255, 255, 255, 0.08)",
+    },
+    decorativeCircle3: {
+      backgroundColor: isUserDarkMode ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.06)",
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -60,6 +119,7 @@ export default function ProfileScreen({ navigation }: any) {
               email: firestoreData.email || currentUser.email || '',
               projectName: firestoreData.projectName || '',
               employeeId: firestoreData.employeeId || '',
+              role: firestoreData.role || 'Employee',
               createdAt: firestoreData.createdAt
             });
           } else {
@@ -103,6 +163,7 @@ export default function ProfileScreen({ navigation }: any) {
     email: contextUser.email,
     projectName: contextUser.projectName,
     employeeId: contextUser.employeeId,
+    role: contextUser.role,
     createdAt: contextUser.createdAt
   } : userData;
 
@@ -162,14 +223,14 @@ export default function ProfileScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <CustomHeader showLogo={true} isDatabaseScreen={false} />
       {/* Background */}
-      <View style={styles.background} />
+      <View style={[styles.background, dynamicStyles.background]} />
 
       <View style={styles.contentContainer}>
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, dynamicStyles.profileCard]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.avatarContainer}>
@@ -182,52 +243,71 @@ export default function ProfileScreen({ navigation }: any) {
                 </Text>
               </LinearGradient>
             </View>
-            <Text style={styles.title}>Profile</Text>
-            <Text style={styles.subtitle}>Your account information</Text>
+            <View style={styles.headerTextContainer}>
+              <Text style={[styles.title, dynamicStyles.title]}>Profile</Text>
+              <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Your account information</Text>
+            </View>
+            <Pressable style={[styles.darkModeButton, dynamicStyles.darkModeButton]} onPress={toggleUserDarkMode}>
+              <Ionicons 
+                name={isUserDarkMode ? "sunny" : "moon"} 
+                size={24} 
+                color={isUserDarkMode ? "#FFD700" : "#4CAF50"} 
+              />
+            </Pressable>
           </View>
 
           {/* Profile Information */}
           <View style={styles.profileInfo}>
             <View style={styles.infoSection}>
-              <Text style={styles.sectionTitle}>Personal Information</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Personal Information</Text>
               
-              <View style={styles.infoItem}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="person" size={getIconSize(20)} color="#2E7D32" />
+              <View style={[styles.infoItem, dynamicStyles.infoItem]}>
+                <View style={[styles.infoIcon, dynamicStyles.infoIcon]}>
+                  <Ionicons name="person" size={getIconSize(20)} color={isUserDarkMode ? "#81C784" : "#2E7D32"} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Full Name</Text>
-                  <Text style={styles.infoValue}>{displayUserData.name || 'Not provided'}</Text>
+                  <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Full Name</Text>
+                  <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{displayUserData.name || 'Not provided'}</Text>
                 </View>
               </View>
 
-              <View style={styles.infoItem}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="mail" size={getIconSize(20)} color="#2E7D32" />
+              <View style={[styles.infoItem, dynamicStyles.infoItem]}>
+                <View style={[styles.infoIcon, dynamicStyles.infoIcon]}>
+                  <Ionicons name="mail" size={getIconSize(20)} color={isUserDarkMode ? "#81C784" : "#2E7D32"} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Email</Text>
-                  <Text style={styles.infoValue}>{displayUserData.email || 'Not provided'}</Text>
+                  <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Email</Text>
+                  <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{displayUserData.email || 'Not provided'}</Text>
                 </View>
               </View>
 
-              <View style={styles.infoItem}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="id-card" size={getIconSize(20)} color="#2E7D32" />
+              <View style={[styles.infoItem, dynamicStyles.infoItem]}>
+                <View style={[styles.infoIcon, dynamicStyles.infoIcon]}>
+                  <Ionicons name="id-card" size={getIconSize(20)} color={isUserDarkMode ? "#81C784" : "#2E7D32"} />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Employee ID</Text>
-                  <Text style={styles.infoValue}>{displayUserData.employeeId || 'Not provided'}</Text>
+                  <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{displayUserData.employeeId || 'Not provided'}</Text>
                 </View>
               </View>
 
-              <View style={styles.infoItem}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="location" size={getIconSize(20)} color="#2E7D32" />
+              <View style={[styles.infoItem, dynamicStyles.infoItem]}>
+                <View style={[styles.infoIcon, dynamicStyles.infoIcon]}>
+                  <Ionicons name="location" size={getIconSize(20)} color={isUserDarkMode ? "#81C784" : "#2E7D32"} />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Project Name</Text>
-                  <Text style={styles.infoValue}>{displayUserData.projectName || 'Not provided'}</Text>
+                  <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{displayUserData.projectName || 'Not provided'}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.infoItem, dynamicStyles.infoItem]}>
+                <View style={[styles.infoIcon, dynamicStyles.infoIcon]}>
+                  <Ionicons name="shield-checkmark" size={getIconSize(20)} color={isUserDarkMode ? "#81C784" : "#2E7D32"} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Role</Text>
+                  <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{displayUserData.role || 'Employee'}</Text>
                 </View>
               </View>
             </View>
@@ -236,10 +316,10 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={styles.actionsSection}>
               <Text style={styles.sectionTitle}>Account Actions</Text>
               
-              <Pressable style={styles.logoutButton} onPress={handleLogout}>
+              <Pressable style={[styles.logoutButton, dynamicStyles.logoutButton]} onPress={handleLogout}>
                 <View style={styles.logoutButtonContent}>
-                  <Ionicons name="log-out" size={getIconSize(20)} color="#F44336" />
-                  <Text style={styles.logoutButtonText}>Logout</Text>
+                  <Ionicons name="log-out" size={getIconSize(20)} color={isUserDarkMode ? "#FF6B6B" : "#F44336"} />
+                  <Text style={[styles.logoutButtonText, dynamicStyles.logoutButtonText]}>Logout</Text>
                 </View>
               </Pressable>
             </View>
@@ -247,9 +327,9 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* Decorative Elements */}
-        <View style={styles.decorativeCircle1} />
-        <View style={styles.decorativeCircle2} />
-        <View style={styles.decorativeCircle3} />
+        <View style={[styles.decorativeCircle1, dynamicStyles.decorativeCircle1]} />
+        <View style={[styles.decorativeCircle2, dynamicStyles.decorativeCircle2]} />
+        <View style={[styles.decorativeCircle3, dynamicStyles.decorativeCircle3]} />
       </View>
     </View>
   );
@@ -298,8 +378,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.large,
-    paddingTop: Platform.OS === 'ios' ? 258 : 250,
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+    paddingTop: Platform.OS === 'ios' ? 280 : 270,
+    paddingBottom: 140,
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -307,15 +387,32 @@ const styles = StyleSheet.create({
     padding: isSmallDevice() ? spacing.medium : isTablet() ? spacing.large : spacing.medium,
     paddingBottom: isSmallDevice() ? spacing.large : isTablet() ? spacing.xLarge : spacing.large,
     width: getContainerWidth(0.9),
-    alignSelf: 'center',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    minHeight: screenDimensions.height * 0.5,
+    maxWidth: getContainerWidth(0.95),
+    minHeight: screenDimensions.height * 0.4,
+    marginBottom: 120,
     ...getShadow(10),
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: isSmallDevice() ? spacing.medium : spacing.large,
+    position: 'relative',
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginLeft: spacing.medium,
+  },
+  darkModeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
   },
   avatarContainer: {
     marginBottom: spacing.medium,
@@ -462,4 +559,4 @@ const styles = StyleSheet.create({
     borderRadius: getIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
-}); 
+});

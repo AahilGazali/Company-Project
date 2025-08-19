@@ -6,12 +6,14 @@ import DashboardStorageService, { StoredDashboard } from '../services/dashboardS
 import ImportedFilesService from '../services/importedFilesService';
 import DashboardCharts from '../components/DashboardCharts';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getUserID } from '../utils/userUtils';
 import CustomHeader from '../components/CustomHeader';
 import { spacing, fontSize, isTablet, borderRadius, getShadow } from '../utils/responsive';
 
 export default function ReportsScreen() {
   const { user, isAdminCreatedUser } = useUser();
+  const { isUserDarkMode } = useTheme();
   const [dashboards, setDashboards] = useState<StoredDashboard[]>([]);
   const [selectedDashboard, setSelectedDashboard] = useState<StoredDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -221,20 +223,60 @@ export default function ReportsScreen() {
     );
   }
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    safeArea: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#E2EBDD",
+    },
+    container: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#ffffff",
+    },
+    scrollContent: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#ffffff",
+    },
+    centerContainer: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#ffffff",
+    },
+    loadingText: {
+      color: isUserDarkMode ? "#B0B0B0" : "#6b7280",
+    },
+    emptyContainer: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#ffffff",
+    },
+    emptyTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#1f2937",
+    },
+    emptyText: {
+      color: isUserDarkMode ? "#B0B0B0" : "#374151",
+    },
+    emptySubtext: {
+      color: isUserDarkMode ? "#666" : "#6b7280",
+    },
+    dashboardContent: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#ffffff",
+    },
+    dashboardHeader: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#ffffff",
+    },
+    dashboardHeaderTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    }
+  };
+
     return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]}>
       <CustomHeader showLogo={true} isDatabaseScreen={false} />
       <ScrollView 
-        style={styles.container} 
+        style={[styles.container, dynamicStyles.container]} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, dynamicStyles.scrollContent]}
       >
         {/* Dashboard Content */}
         {selectedDashboard ? (
-          <View style={styles.dashboardContent}>
-            <View style={styles.dashboardHeader}>
+          <View style={[styles.dashboardContent, dynamicStyles.dashboardContent]}>
+            <View style={[styles.dashboardHeader, dynamicStyles.dashboardHeader]}>
               <View style={styles.dashboardHeaderContent}>
-                <Text style={styles.dashboardHeaderTitle}>
+                <Text style={[styles.dashboardHeaderTitle, dynamicStyles.dashboardHeaderTitle]}>
                   📊 {selectedDashboard.fileName.replace(/\.[^/.]+$/, '')}
                 </Text>
               </View>
@@ -242,8 +284,8 @@ export default function ReportsScreen() {
             <DashboardCharts dashboardData={selectedDashboard.dashboardData} />
           </View>
         ) : (
-          <View style={styles.centerContainer}>
-            <Text style={styles.loadingText}>Select a dashboard to view</Text>
+          <View style={[styles.centerContainer, dynamicStyles.centerContainer]}>
+            <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Select a dashboard to view</Text>
           </View>
         )}
       </ScrollView>

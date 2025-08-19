@@ -28,6 +28,7 @@ import {
 } from '../utils/responsive';
 import { useResponsiveDimensions } from '../hooks/useResponsiveDimensions';
 import TypingIndicator from './TypingIndicator';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { height: screenHeight } = screenDimensions;
 
@@ -38,6 +39,7 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ isVisible, onClose, dataAnalysis }: ChatInterfaceProps) {
+  const { isUserDarkMode } = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -45,6 +47,50 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
   const scrollViewRef = useRef<ScrollView>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const welcomeMessageAdded = useRef(false);
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    overlay: {
+      backgroundColor: isUserDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+    },
+    container: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFFFFF',
+    },
+    header: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#667eea',
+    },
+    headerTitle: {
+      color: isUserDarkMode ? '#FFFFFF' : '#FFFFFF',
+    },
+    headerSubtitle: {
+      color: isUserDarkMode ? '#E2E8F0' : '#E2E8F0',
+    },
+    closeButton: {
+      backgroundColor: isUserDarkMode ? '#374151' : 'rgba(255, 255, 255, 0.2)',
+    },
+    messagesContainer: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#FFFFFF',
+    },
+    quickActions: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F0F0F0',
+      borderBottomColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+    quickActionButton: {
+      backgroundColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+    quickActionText: {
+      color: isUserDarkMode ? '#FFFFFF' : '#333',
+    },
+    noDataContainer: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
+    },
+    noDataText: {
+      color: isUserDarkMode ? '#D1D5DB' : '#6B7280',
+    },
+    noDataSubtext: {
+      color: isUserDarkMode ? '#9CA3AF' : '#9CA3AF',
+    },
+  };
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -349,6 +395,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     <Animated.View 
       style={[
         styles.overlay,
+        dynamicStyles.overlay,
         {
           transform: [{
             translateY: slideAnim.interpolate({
@@ -361,13 +408,13 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     >
       <BlurView intensity={20} style={styles.blurContainer}>
         <KeyboardAvoidingView 
-          style={styles.container} 
+          style={[styles.container, dynamicStyles.container]} 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, dynamicStyles.header]}>
             <LinearGradient
-              colors={['#2196F3', '#1976D2']}
+              colors={isUserDarkMode ? ['#2D2D2D', '#1E1E1E'] : ['#2196F3', '#1976D2']}
               style={styles.headerGradient}
             >
               <View style={styles.headerContent}>
@@ -376,13 +423,13 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
                     <Ionicons name="analytics" size={24} color="#FFF" />
                   </View>
                   <View>
-                    <Text style={styles.title}>AI Business Analyst</Text>
-                    <Text style={styles.subtitle}>
+                    <Text style={[styles.title, dynamicStyles.headerTitle]}>AI Business Analyst</Text>
+                    <Text style={[styles.subtitle, dynamicStyles.headerSubtitle]}>
                       {hasDataContext ? 'Ready to analyze your Excel data!' : 'Ask me anything!'}
                     </Text>
                   </View>
                 </View>
-                <Pressable style={styles.closeButton} onPress={onClose}>
+                <Pressable style={[styles.closeButton, dynamicStyles.closeButton]} onPress={onClose}>
                   <Ionicons name="close" size={24} color="#FFF" />
                 </Pressable>
               </View>
@@ -391,65 +438,65 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
 
           {/* Quick Action Buttons */}
           {hasDataContext && (
-            <View style={styles.quickActions}>
+            <View style={[styles.quickActions, dynamicStyles.quickActions]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsContent}>
                 <Pressable 
-                  style={styles.quickActionButton} 
+                  style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
                   onPress={() => handleSendMessage("Check data status and availability")}
                 >
-                  <Text style={styles.quickActionText}>📊 Data Status</Text>
+                  <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>📊 Data Status</Text>
                 </Pressable>
                 
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("Verify complete dataset analysis")}
-                >
-                  <Text style={styles.quickActionText}>🔍 Verify Data</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("Debug query: How many MMTs were received for 1172 ELEVENTH STREET (GUEST HOUSE) in June 2025?")}
-                >
-                  <Text style={styles.quickActionText}>🐛 Debug Query</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("Test complete dataset access")}
-                >
-                  <Text style={styles.quickActionText}>🧪 Test Dataset</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("Save complete data and test querying")}
-                >
-                  <Text style={styles.quickActionText}>💾 Save Data</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("Debug data structure and field mapping")}
-                >
-                  <Text style={styles.quickActionText}>🔧 Debug Data</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={styles.quickActionButton} 
-                  onPress={() => handleSendMessage("How many MMTs were received for 1172 ELEVENTH STREET (GUEST HOUSE) in June 2025?")}
-                >
-                  <Text style={styles.quickActionText}>🧪 Test Hybrid Query</Text>
-                </Pressable>
-                
-                {/* Dynamic Column Buttons */}
+                                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("Verify complete dataset analysis")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>🔍 Verify Data</Text>
+                  </Pressable>
+                  
+                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("Debug query: How many MMTs were received for 1172 ELEVENTH STREET (GUEST HOUSE) in June 2025?")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>🐛 Debug Query</Text>
+                  </Pressable>
+                  
+                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("Test complete dataset access")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>🧪 Test Dataset</Text>
+                  </Pressable>
+                  
+                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("Save complete data and test querying")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>💾 Save Data</Text>
+                  </Pressable>
+                  
+                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("Debug data structure and field mapping")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>🔧 Debug Data</Text>
+                  </Pressable>
+                  
+                  <Pressable 
+                    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
+                    onPress={() => handleSendMessage("How many MMTs were received for 1172 ELEVENTH STREET (GUEST HOUSE) in June 2025?")}
+                  >
+                    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>🧪 Test Hybrid Query</Text>
+                  </Pressable>
+                  
+                  {/* Dynamic Column Buttons */}
 {(dataAnalysis?.columns || []).map((columnName: string, index: number) => (
   <Pressable 
     key={index}
-    style={styles.quickActionButton} 
+    style={[styles.quickActionButton, dynamicStyles.quickActionButton]} 
     onPress={() => handleColumnButtonClick(columnName)}
   >
-    <Text style={styles.quickActionText}>
+    <Text style={[styles.quickActionText, dynamicStyles.quickActionText]}>
       {getColumnIcon(columnName)} {columnName}
     </Text>
   </Pressable>
@@ -461,7 +508,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
           {/* Messages */}
           <ScrollView
             ref={scrollViewRef}
-            style={styles.messagesContainer}
+            style={[styles.messagesContainer, dynamicStyles.messagesContainer]}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
           >
@@ -472,7 +519,9 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
           </ScrollView>
 
           {/* Input */}
-          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          <View style={{ marginBottom: 20 }}>
+            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          </View>
         </KeyboardAvoidingView>
       </BlurView>
     </Animated.View>
@@ -542,17 +591,16 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     paddingHorizontal: spacing.large,
+    paddingTop: spacing.medium, // Add top padding for spacing from header
     paddingBottom: spacing.medium,
-    backgroundColor: '#F0F0F0', // Light background for quick actions
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   quickActionsContent: {
     alignItems: 'center',
     paddingVertical: spacing.small,
+    paddingTop: spacing.medium, // Add extra top padding for better visibility
   },
   quickActionButton: {
-    backgroundColor: '#E0E0E0',
     borderRadius: borderRadius.medium,
     paddingVertical: spacing.small,
     paddingHorizontal: spacing.medium,
@@ -563,7 +611,6 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: fontSize.small, // Changed from fontSize.small
     fontWeight: 'bold',
-    color: '#333',
   },
   messagesContainer: {
     flex: 1,
@@ -571,5 +618,6 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     paddingVertical: spacing.large,
-      },
+    paddingBottom: 100, // Add extra bottom padding to ensure input is visible
+  },
   }); 

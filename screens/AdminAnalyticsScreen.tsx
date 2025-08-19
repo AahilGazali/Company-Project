@@ -189,7 +189,7 @@ export default function AdminAnalyticsScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      <CustomHeader showLogo={true} isDatabaseScreen={false} isAdmin={true} />
       
       <ScrollView 
         style={styles.scrollView}

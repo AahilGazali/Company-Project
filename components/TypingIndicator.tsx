@@ -1,14 +1,24 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TypingIndicatorProps {
   isVisible: boolean;
 }
 
 export default function TypingIndicator({ isVisible }: TypingIndicatorProps) {
+  const { isUserDarkMode } = useTheme();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    bubble: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#F8F9FA',
+      borderColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+  };
 
   useEffect(() => {
     if (isVisible) {
@@ -70,7 +80,7 @@ export default function TypingIndicator({ isVisible }: TypingIndicatorProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.bubble}>
+      <View style={[styles.bubble, dynamicStyles.bubble]}>
         <Animated.View 
           style={[
             styles.dot, 

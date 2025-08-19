@@ -9,6 +9,7 @@ import {
   TimelineChart 
 } from '../services/chartDataService';
 import { spacing, fontSize, borderRadius, isTablet } from '../utils/responsive';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DashboardChartsProps {
   dashboardData: DashboardData;
@@ -18,37 +19,80 @@ const screenWidth = Dimensions.get('window').width;
 const chartWidth = screenWidth - (spacing.large * 2);
 
 export default function DashboardCharts({ dashboardData }: DashboardChartsProps) {
+  const { isUserDarkMode } = useTheme();
+
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? '#121212' : '#ffffff',
+    },
+    header: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#667eea',
+    },
+    title: {
+      color: isUserDarkMode ? '#ffffff' : '#ffffff',
+    },
+    subtitle: {
+      color: isUserDarkMode ? '#e2e8f0' : '#e2e8f0',
+    },
+    lastUpdated: {
+      color: isUserDarkMode ? '#cbd5e1' : '#cbd5e1',
+    },
+    chartCard: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#ffffff',
+      borderColor: isUserDarkMode ? '#374151' : '#e5e7eb',
+    },
+    chartTitle: {
+      color: isUserDarkMode ? '#ffffff' : '#1f2937',
+    },
+    chartSubtitle: {
+      color: isUserDarkMode ? '#d1d5db' : '#6b7280',
+    },
+    chartWrapper: {
+      backgroundColor: isUserDarkMode ? '#2D2D2D' : '#f8fafc',
+    },
+    noDataContainer: {
+      backgroundColor: isUserDarkMode ? '#1E1E1E' : '#ffffff',
+    },
+    noDataText: {
+      color: isUserDarkMode ? '#ffffff' : '#1f2937',
+    },
+    noDataSubtext: {
+      color: isUserDarkMode ? '#d1d5db' : '#6b7280',
+    },
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, dynamicStyles.container]} showsVerticalScrollIndicator={false}>
       {/* Dashboard Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard - {dashboardData.fileName}</Text>
-        <Text style={styles.subtitle}>
+      <View style={[styles.header, dynamicStyles.header]}>
+        <Text style={[styles.title, dynamicStyles.title]}>Dashboard - {dashboardData.fileName}</Text>
+        <Text style={[styles.subtitle, dynamicStyles.subtitle]}>
           Total Records: {dashboardData.totalRecords.toLocaleString()}
         </Text>
-        <Text style={styles.lastUpdated}>
+        <Text style={[styles.lastUpdated, dynamicStyles.lastUpdated]}>
           Last Updated: {dashboardData.lastUpdated ? new Date(dashboardData.lastUpdated).toLocaleDateString() : 'Recently'}
         </Text>
       </View>
 
       {/* Location Charts - Top 10 locations with high repetition */}
       {dashboardData.locationCharts.map((chart, index) => (
-        <LocationChartComponent key={`location-${index}`} chart={chart} />
+        <LocationChartComponent key={`location-${index}`} chart={chart} isDarkMode={isUserDarkMode} />
       ))}
 
       {/* Action Charts */}
       {dashboardData.actionCharts.map((chart, index) => (
-        <ActionChartComponent key={`action-${index}`} chart={chart} />
+        <ActionChartComponent key={`action-${index}`} chart={chart} isDarkMode={isUserDarkMode} />
       ))}
 
       {/* MMT Charts - Equipment maintenance and replacement counts */}
       {dashboardData.mmtCharts.map((chart, index) => (
-        <MMTChartComponent key={`mmt-${index}`} chart={chart} />
+        <MMTChartComponent key={`mmt-${index}`} chart={chart} isDarkMode={isUserDarkMode} />
       ))}
 
       {/* Timeline Charts */}
       {dashboardData.timelineCharts.map((chart, index) => (
-        <TimelineChartComponent key={`timeline-${index}`} chart={chart} />
+        <TimelineChartComponent key={`timeline-${index}`} chart={chart} isDarkMode={isUserDarkMode} />
       ))}
 
       {/* No Data Message */}
@@ -56,11 +100,11 @@ export default function DashboardCharts({ dashboardData }: DashboardChartsProps)
        dashboardData.actionCharts.length === 0 && 
        dashboardData.mmtCharts.length === 0 && 
        dashboardData.timelineCharts.length === 0 && (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>
+        <View style={[styles.noDataContainer, dynamicStyles.noDataContainer]}>
+          <Text style={[styles.noDataText, dynamicStyles.noDataText]}>
             No chart data found in this Excel file.
           </Text>
-          <Text style={styles.noDataSubtext}>
+          <Text style={[styles.noDataSubtext, dynamicStyles.noDataSubtext]}>
             Make sure your Excel file contains columns like 'Location', 'Action', or 'MMT'.
           </Text>
         </View>
@@ -72,37 +116,78 @@ export default function DashboardCharts({ dashboardData }: DashboardChartsProps)
 }
 
 // Location Chart Component
-function LocationChartComponent({ chart }: { chart: LocationChart }) {
+function LocationChartComponent({ chart, isDarkMode }: { chart: LocationChart, isDarkMode: boolean }) {
+  
   if (chart.data.length === 0) return null;
 
-      const chartConfig = {
-      backgroundColor: '#ffffff',
-      backgroundGradientFrom: '#f8fafc',
-      backgroundGradientTo: '#ffffff',
-      decimalPlaces: 0,
-      color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`, // Bright green
-      labelColor: (opacity = 1) => `rgba(31, 41, 55, 1)`, // Dark text with full opacity
-      style: {
-        borderRadius: borderRadius.medium,
-        paddingBottom: 10,
-        paddingLeft: 10,
-        paddingRight: 10,
-      },
-      propsForLabels: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        fill: '#1f2937',
-      },
-      propsForDots: {
-        r: '6',
-        strokeWidth: '2',
-        stroke: '#22c55e'
-      },
-      formatXLabel: (label: string) => {
-        // Truncate long labels and make them more readable
-        return label.length > 6 ? label.substring(0, 6) + '...' : label;
-      }
-    };
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    },
+    header: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#667eea',
+    },
+    title: {
+      color: isDarkMode ? '#ffffff' : '#ffffff',
+    },
+    subtitle: {
+      color: isDarkMode ? '#e2e8f0' : '#e2e8f0',
+    },
+    lastUpdated: {
+      color: isDarkMode ? '#cbd5e1' : '#cbd5e1',
+    },
+    chartCard: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+      borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+    },
+    chartTitle: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    chartSubtitle: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+    chartWrapper: {
+      backgroundColor: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    },
+    noDataContainer: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    },
+    noDataText: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    noDataSubtext: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+  };
+
+  const chartConfig = {
+    backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    backgroundGradientFrom: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    backgroundGradientTo: isDarkMode ? '#1E1E1E' : '#ffffff',
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`, // Bright green
+    labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(31, 41, 55, ${opacity})`,
+    style: {
+      borderRadius: borderRadius.medium,
+      paddingBottom: 10,
+      paddingLeft: 10,
+      paddingRight: 10,
+    },
+    propsForLabels: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      fill: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: '#22c55e'
+    },
+    formatXLabel: (label: string) => {
+      // Truncate long labels and make them more readable
+      return label.length > 6 ? label.substring(0, 6) + '...' : label;
+    }
+  };
 
   // Prepare data for bar chart - Show all 10 locations
   const barData = {
@@ -113,27 +198,29 @@ function LocationChartComponent({ chart }: { chart: LocationChart }) {
   };
 
   return (
-    <View style={styles.chartContainer}>
-      <Text style={styles.chartTitle}>{chart.title}</Text>
-      <Text style={styles.chartSubtitle}>
+    <View style={[styles.chartContainer, dynamicStyles.chartCard]}>
+      <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>{chart.title}</Text>
+      <Text style={[styles.chartSubtitle, dynamicStyles.chartSubtitle]}>
         Showing top {Math.min(10, chart.data.length)} locations with high repetition
       </Text>
       
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <BarChart
-          data={barData}
-          width={Math.max(chartWidth, 10 * 100)} // Fixed width for 10 locations
-          height={320}
-          chartConfig={chartConfig}
-          verticalLabelRotation={0}
-          style={styles.chart}
-          fromZero={true}
-          yAxisLabel=""
-          yAxisSuffix=""
-          showValuesOnTopOfBars={true}
-          withHorizontalLabels={true}
-          withVerticalLabels={true}
-        />
+        <View style={[styles.chartWrapper, dynamicStyles.chartWrapper]}>
+          <BarChart
+            data={barData}
+            width={Math.max(chartWidth, 10 * 100)} // Fixed width for 10 locations
+            height={320}
+            chartConfig={chartConfig}
+            verticalLabelRotation={0}
+            style={styles.chart}
+            fromZero={true}
+            yAxisLabel=""
+            yAxisSuffix=""
+            showValuesOnTopOfBars={true}
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+          />
+        </View>
       </ScrollView>
       
       <Text style={styles.chartInfo}>
@@ -144,15 +231,32 @@ function LocationChartComponent({ chart }: { chart: LocationChart }) {
 }
 
 // Action Chart Component
-function ActionChartComponent({ chart }: { chart: ActionChart }) {
+function ActionChartComponent({ chart, isDarkMode }: { chart: ActionChart, isDarkMode: boolean }) {
   if (chart.data.length === 0) return null;
 
+  const dynamicStyles = {
+    chartCard: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+      borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+    },
+    chartTitle: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    chartSubtitle: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+    chartInfo: {
+      color: isDarkMode ? '#d1d5db' : '#374151',
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+    },
+  };
+
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#f8fafc',
-    backgroundGradientTo: '#ffffff',
-    color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Bright blue
-    labelColor: (opacity = 1) => `rgba(31, 41, 55, 1)`, // Dark text with full opacity
+    backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    backgroundGradientFrom: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    backgroundGradientTo: isDarkMode ? '#1E1E1E' : '#ffffff',
+    color: (opacity = 1) => `rgba(168, 85, 247, ${opacity})`, // Bright purple
+    labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(31, 41, 55, ${opacity})`,
     style: {
       borderRadius: borderRadius.medium,
       paddingBottom: 10,
@@ -162,14 +266,13 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
     propsForLabels: {
       fontSize: 12,
       fontWeight: 'bold',
-      fill: '#1f2937',
+      fill: isDarkMode ? '#ffffff' : '#1f2937',
     },
     formatXLabel: (label: string) => {
       return label.length > 6 ? label.substring(0, 6) + '...' : label;
     }
   };
 
-  // For actions, use pie chart if few items, bar chart if many
   if (chart.data.length <= 6) {
     const vibrantColors = [
       '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', 
@@ -180,14 +283,14 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
       name: item.label,
       count: item.value,
       color: vibrantColors[index % vibrantColors.length],
-      legendFontColor: '#374151',
+      legendFontColor: isDarkMode ? '#ffffff' : '#374151',
       legendFontSize: fontSize.small,
     }));
 
     return (
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>{chart.title}</Text>
-        <Text style={styles.chartSubtitle}>
+      <View style={[styles.chartContainer, dynamicStyles.chartCard]}>
+        <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>{chart.title}</Text>
+        <Text style={[styles.chartSubtitle, dynamicStyles.chartSubtitle]}>
           Distribution of action types
         </Text>
         
@@ -202,7 +305,7 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
           style={styles.chart}
         />
         
-        <Text style={styles.chartInfo}>
+        <Text style={[styles.chartInfo, dynamicStyles.chartInfo]}>
           Total action types: {chart.data.length}
         </Text>
       </View>
@@ -216,9 +319,9 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
     };
 
     return (
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>{chart.title}</Text>
-        <Text style={styles.chartSubtitle}>
+      <View style={[styles.chartContainer, dynamicStyles.chartCard]}>
+        <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>{chart.title}</Text>
+        <Text style={[styles.chartSubtitle, dynamicStyles.chartSubtitle]}>
           Top {Math.min(8, chart.data.length)} action types
         </Text>
         
@@ -239,7 +342,7 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
           />
         </ScrollView>
         
-        <Text style={styles.chartInfo}>
+        <Text style={[styles.chartInfo, dynamicStyles.chartInfo]}>
           Total action types: {chart.data.length}
         </Text>
       </View>
@@ -248,15 +351,32 @@ function ActionChartComponent({ chart }: { chart: ActionChart }) {
 }
 
 // MMT Chart Component
-function MMTChartComponent({ chart }: { chart: MMTChart }) {
+function MMTChartComponent({ chart, isDarkMode }: { chart: MMTChart, isDarkMode: boolean }) {
   if (chart.data.length === 0) return null;
 
+  const dynamicStyles = {
+    chartCard: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+      borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+    },
+    chartTitle: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    chartSubtitle: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+    chartInfo: {
+      color: isDarkMode ? '#d1d5db' : '#374151',
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+    },
+  };
+
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#f8fafc',
-    backgroundGradientTo: '#ffffff',
+    backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    backgroundGradientFrom: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    backgroundGradientTo: isDarkMode ? '#1E1E1E' : '#ffffff',
     color: (opacity = 1) => `rgba(168, 85, 247, ${opacity})`, // Bright purple
-    labelColor: (opacity = 1) => `rgba(31, 41, 55, 1)`, // Dark text with full opacity
+    labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(31, 41, 55, ${opacity})`,
     style: {
       borderRadius: borderRadius.medium,
       paddingBottom: 10,
@@ -266,7 +386,7 @@ function MMTChartComponent({ chart }: { chart: MMTChart }) {
     propsForLabels: {
       fontSize: 12,
       fontWeight: 'bold',
-      fill: '#1f2937',
+      fill: isDarkMode ? '#ffffff' : '#1f2937',
     },
     formatXLabel: (label: string) => {
       return label.length > 6 ? label.substring(0, 6) + '...' : label;
@@ -281,9 +401,9 @@ function MMTChartComponent({ chart }: { chart: MMTChart }) {
   };
 
   return (
-    <View style={styles.chartContainer}>
-      <Text style={styles.chartTitle}>{chart.title}</Text>
-      <Text style={styles.chartSubtitle}>
+    <View style={[styles.chartContainer, dynamicStyles.chartCard]}>
+      <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>{chart.title}</Text>
+      <Text style={[styles.chartSubtitle, dynamicStyles.chartSubtitle]}>
         MMT analysis and distribution
       </Text>
       
@@ -304,7 +424,7 @@ function MMTChartComponent({ chart }: { chart: MMTChart }) {
         />
       </ScrollView>
       
-      <Text style={styles.chartInfo}>
+      <Text style={[styles.chartInfo, dynamicStyles.chartInfo]}>
         Total MMT entries: {chart.totalCount.toLocaleString()}
       </Text>
     </View>
@@ -312,16 +432,56 @@ function MMTChartComponent({ chart }: { chart: MMTChart }) {
 }
 
 // Timeline Chart Component
-function TimelineChartComponent({ chart }: { chart: TimelineChart }) {
+function TimelineChartComponent({ chart, isDarkMode }: { chart: TimelineChart, isDarkMode: boolean }) {
   if (!chart.data.labels || chart.data.labels.length === 0) return null;
 
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    },
+    header: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#667eea',
+    },
+    title: {
+      color: isDarkMode ? '#ffffff' : '#ffffff',
+    },
+    subtitle: {
+      color: isDarkMode ? '#e2e8f0' : '#e2e8f0',
+    },
+    lastUpdated: {
+      color: isDarkMode ? '#cbd5e1' : '#cbd5e1',
+    },
+    chartCard: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+      borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+    },
+    chartTitle: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    chartSubtitle: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+    chartWrapper: {
+      backgroundColor: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    },
+    noDataContainer: {
+      backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    },
+    noDataText: {
+      color: isDarkMode ? '#ffffff' : '#1f2937',
+    },
+    noDataSubtext: {
+      color: isDarkMode ? '#d1d5db' : '#6b7280',
+    },
+  };
+
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#f8fafc',
-    backgroundGradientTo: '#ffffff',
+    backgroundColor: isDarkMode ? '#1E1E1E' : '#ffffff',
+    backgroundGradientFrom: isDarkMode ? '#2D2D2D' : '#f8fafc',
+    backgroundGradientTo: isDarkMode ? '#1E1E1E' : '#ffffff',
     decimalPlaces: 0,
     color: (opacity = 1) => `rgba(236, 72, 153, ${opacity})`, // Bright pink
-    labelColor: (opacity = 1) => `rgba(31, 41, 55, 1)`, // Dark text with full opacity
+    labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(31, 41, 55, ${opacity})`,
     style: {
       borderRadius: borderRadius.medium,
       paddingBottom: 10,
@@ -331,7 +491,7 @@ function TimelineChartComponent({ chart }: { chart: TimelineChart }) {
     propsForLabels: {
       fontSize: 12,
       fontWeight: 'bold',
-      fill: '#1f2937',
+      fill: isDarkMode ? '#ffffff' : '#1f2937',
     },
     propsForDots: {
       r: '6',
@@ -340,10 +500,19 @@ function TimelineChartComponent({ chart }: { chart: TimelineChart }) {
     },
   };
 
+  // Add chartInfo style to dynamicStyles
+  const updatedDynamicStyles = {
+    ...dynamicStyles,
+    chartInfo: {
+      color: isDarkMode ? '#d1d5db' : '#374151',
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+    },
+  };
+
   return (
-    <View style={styles.chartContainer}>
-      <Text style={styles.chartTitle}>{chart.title}</Text>
-      <Text style={styles.chartSubtitle}>
+    <View style={[styles.chartContainer, dynamicStyles.chartCard]}>
+      <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>{chart.title}</Text>
+      <Text style={[styles.chartSubtitle, dynamicStyles.chartSubtitle]}>
         Trends over time
       </Text>
       
@@ -360,7 +529,7 @@ function TimelineChartComponent({ chart }: { chart: TimelineChart }) {
         />
       </ScrollView>
       
-      <Text style={styles.chartInfo}>
+      <Text style={[styles.chartInfo, updatedDynamicStyles.chartInfo]}>
         Time period: {chart.data.labels.length} months
       </Text>
     </View>
@@ -435,6 +604,14 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: spacing.small,
     borderRadius: borderRadius.medium,
+    overflow: 'hidden',
+  },
+  chartWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: borderRadius.medium,
+    padding: spacing.small,
     overflow: 'hidden',
   },
   chartInfo: {

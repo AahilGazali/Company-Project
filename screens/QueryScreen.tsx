@@ -23,8 +23,10 @@ import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisSe
 import { ImportedFile, ImportedFilesService } from '../services/importedFilesService';
 import GeminiService from '../services/geminiService';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getUserID } from '../utils/userUtils';
 import CustomHeader from '../components/CustomHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   spacing, 
   fontSize, 
@@ -41,6 +43,7 @@ import {
 
 export default function QueryScreen() {
   const { user, isAdminCreatedUser, isAuthenticated } = useUser();
+  const { isUserDarkMode } = useTheme();
   const [queryText, setQueryText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -49,6 +52,7 @@ export default function QueryScreen() {
   const [loadingLatestFile, setLoadingLatestFile] = useState(true);
   const [retryingAnalysis, setRetryingAnalysis] = useState(false);
   const [greeting, setGreeting] = useState<string>('');
+  const insets = useSafeAreaInsets();
 
   // Set greeting when user is authenticated
   useEffect(() => {
@@ -195,11 +199,62 @@ export default function QueryScreen() {
     setIsChatOpen(!isChatOpen);
   };
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    background: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    queryCard: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    queryTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    querySubtitle: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    queryInput: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#F8F9FA",
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+      borderColor: isUserDarkMode ? "#404040" : "#E0E0E0",
+    },
+    queryInputPlaceholder: {
+      color: isUserDarkMode ? "#666" : "#999",
+    },
+    submitButton: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#4CAF50",
+    },
+    submitButtonText: {
+      color: isUserDarkMode ? "#81C784" : "#FFFFFF",
+    },
+    chatButton: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#2196F3",
+    },
+    chatButtonText: {
+      color: isUserDarkMode ? "#81C784" : "#FFFFFF",
+    },
+    fileInfoCard: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    fileInfoTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    fileInfoText: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    fileInfoValue: {
+      color: isUserDarkMode ? "#81C784" : "#2E7D32",
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <CustomHeader showLogo={true} isDatabaseScreen={false} />
       {/* Background */}
-      <View style={styles.background} />
+      <View style={[styles.background, dynamicStyles.background]} />
 
       <KeyboardAvoidingView 
         style={styles.keyboardContainer} 
@@ -211,14 +266,14 @@ export default function QueryScreen() {
           keyboardShouldPersistTaps="handled"
         >
             {/* Query Card */}
-            <View style={styles.queryCard}>
+            <View style={[styles.queryCard, dynamicStyles.queryCard]}>
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.iconContainer}>
                   <Ionicons name="chatbubble-ellipses" size={isTablet() ? 28 : 20} color="#059669" />
                 </View>
-                <Text style={styles.title}>Ask a Question</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.title, dynamicStyles.queryTitle]}>Ask a Question</Text>
+                <Text style={[styles.subtitle, dynamicStyles.querySubtitle]}>
                   Submit your queries and get expert assistance
                 </Text>
               </View>
@@ -285,6 +340,7 @@ export default function QueryScreen() {
                   <TextInput
                     style={[
                       styles.input,
+                      dynamicStyles.queryInput,
                       queryText.length > 500 && { borderColor: '#ef4444', borderWidth: 2 }
                     ]}
                     value={queryText}
@@ -295,7 +351,7 @@ export default function QueryScreen() {
                       }
                     }}
                     placeholder="Type your question or concern here..."
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={dynamicStyles.queryInputPlaceholder.color}
                     multiline
                     numberOfLines={isSmallDevice() ? 4 : isTablet() ? 6 : 5}
                     textAlignVertical="top"
@@ -333,10 +389,10 @@ export default function QueryScreen() {
                 </Pressable>
 
                 {/* Tips Section */}
-                <View style={styles.tipsContainer}>
+                <View style={[styles.tipsContainer, dynamicStyles.queryCard]}>
                   <View style={styles.tipsHeader}>
-                    <Ionicons name="sparkles" size={isTablet() ? 20 : 18} color="#059669" />
-                    <Text style={styles.tipsTitle}>
+                    <Ionicons name="sparkles" size={isTablet() ? 20 : 18} color={isUserDarkMode ? "#81C784" : "#059669"} />
+                    <Text style={[styles.tipsTitle, dynamicStyles.queryTitle]}>
                       {currentDataAnalysis 
                         ? 'AI will analyze your Excel data automatically'
                         : 'Tips for better queries:'
@@ -344,15 +400,15 @@ export default function QueryScreen() {
                     </Text>
                   </View>
                   {currentDataAnalysis ? (
-                    <Text style={styles.tipText}>
+                    <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>
                       Ask any question about your data - the AI will automatically detect keywords, 
                       field names, and context from your Excel file to provide intelligent answers.
                     </Text>
                   ) : (
                     <View style={styles.tipsList}>
-                      <Text style={styles.tipText}>• Be specific and clear</Text>
-                      <Text style={styles.tipText}>• Include relevant details</Text>
-                      <Text style={styles.tipText}>• We'll respond within 24 hours</Text>
+                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• Be specific and clear</Text>
+                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• Include relevant details</Text>
+                      <Text style={[styles.tipText, dynamicStyles.querySubtitle]}>• We'll respond within 24 hours</Text>
                     </View>
                   )}
                 </View>
@@ -405,14 +461,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
-    paddingVertical: spacing.xLarge,
-    paddingTop: Platform.OS === 'ios' ? 120 : 100,
-    paddingBottom: spacing.xLarge,
+    paddingVertical: spacing.small,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingBottom: Platform.OS === 'ios' ? spacing.medium + 120 : spacing.medium + 80,
   },
+
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: isTablet() ? spacing.xLarge : spacing.large,
+    paddingVertical: spacing.large,
+    paddingTop: Platform.OS === 'ios' ? 280 : 270,
+    paddingBottom: Platform.OS === 'ios' ? 200 : 140,
+  },
+
+
   queryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: borderRadius.xxxLarge,
-    padding: isTablet() ? spacing.xLarge : spacing.medium,
+    padding: isTablet() ? spacing.medium : spacing.small,
     width: getContainerWidth(isTablet() ? 0.75 : 0.85),
     maxWidth: 500,
     ...getShadow(10),
@@ -420,7 +488,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.medium,
+    marginBottom: spacing.tiny,
   },
   iconContainer: {
     width: isTablet() ? getIconSize(60) : getIconSize(45),
@@ -429,7 +497,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.small,
+    marginBottom: spacing.tiny,
   },
   icon: {
     fontSize: isTablet() ? getIconSize(40) : getIconSize(30),
@@ -523,7 +591,7 @@ const styles = StyleSheet.create({
   },
   chatbotContainer: {
     position: 'absolute',
-    bottom: spacing.xLarge,
+    bottom: Platform.OS === 'ios' ? spacing.xLarge + 100 : spacing.xLarge + 40,
     right: spacing.large,
     zIndex: 1000,
   },

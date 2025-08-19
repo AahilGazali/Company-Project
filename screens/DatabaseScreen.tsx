@@ -13,6 +13,7 @@ import ResponsiveTable from '../components/ResponsiveTable';
 import CustomHeader from '../components/CustomHeader';
 
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getUserID } from '../utils/userUtils';
 import { 
   spacing, 
@@ -29,6 +30,7 @@ const initialPrograms: Array<{ program: string; noOfHouses: string; completed: s
 
 export default function DatabaseScreen() {
   const { user, isAdminCreatedUser, isAuthenticated } = useUser();
+  const { isUserDarkMode } = useTheme();
   const [isImporting, setIsImporting] = useState(false);
   const [showRCM, setShowRCM] = useState(false);
   const [programs, setPrograms] = useState<Array<{ program: string; noOfHouses: string; completed: string; remaining: string; percentCompleted: string }>>([]);
@@ -482,20 +484,73 @@ export default function DatabaseScreen() {
     }
   };
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    scrollContainer: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    scrollContent: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    importSection: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    sectionTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    sectionDescription: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    fileTypeInfo: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    importedFilesSection: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    tableHeader: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    tableHeaderText: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    tableRow: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#FFFFFF",
+      borderBottomColor: isUserDarkMode ? "#404040" : "#E0E0E0",
+    },
+    fileName: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    fileDate: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    fileSize: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    loadingText: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    emptyFilesText: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <CustomHeader showLogo={true} isDatabaseScreen={true} greeting={greeting} />
       
       <ScrollView 
-        style={styles.scrollContainer} 
-        contentContainerStyle={styles.scrollContent}
+        style={[styles.scrollContainer, dynamicStyles.scrollContainer]} 
+        contentContainerStyle={[styles.scrollContent, dynamicStyles.scrollContent]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
         {/* Import Data Section */}
-        <View style={styles.importSection}>
-          <Text style={styles.sectionTitle}>Import Data</Text>
-          <Text style={styles.sectionDescription}>
+        <View style={[styles.importSection, dynamicStyles.importSection]}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Import Data</Text>
+          <Text style={[styles.sectionDescription, dynamicStyles.sectionDescription]}>
             Import equipment and maintenance data from Excel files (.xlsx, .xls)
           </Text>
           
@@ -516,7 +571,7 @@ export default function DatabaseScreen() {
             </LinearGradient>
           </Pressable>
           
-          <Text style={styles.fileTypeInfo}>Supported formats: .xlsx, .xls</Text>
+          <Text style={[styles.fileTypeInfo, dynamicStyles.fileTypeInfo]}>Supported formats: .xlsx, .xls</Text>
         </View>
 
         {/* My Imported Files Button */}
@@ -538,40 +593,40 @@ export default function DatabaseScreen() {
 
         {/* Imported Files List */}
         {showImportedFiles && (
-          <View style={styles.importedFilesSection}>
-            <Text style={styles.sectionTitle}>Your Imported Files</Text>
+          <View style={[styles.importedFilesSection, dynamicStyles.importedFilesSection]}>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Your Imported Files</Text>
             
             {loadingFiles ? (
-              <Text style={styles.loadingText}>Loading files...</Text>
+              <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading files...</Text>
             ) : importedFiles.length === 0 ? (
               <View style={styles.emptyFilesContainer}>
-                <Text style={styles.emptyFilesText}>
+                <Text style={[styles.emptyFilesText, dynamicStyles.emptyFilesText]}>
                   No imported files found. Upload an Excel file to get started!
                 </Text>
               </View>
             ) : (
               <View style={styles.filesTable}>
                 {/* Table Header */}
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderText, { flex: 2 }]}>File Name</Text>
-                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Size</Text>
-                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Action</Text>
+                <View style={[styles.tableHeader, dynamicStyles.tableHeader]}>
+                  <Text style={[styles.tableHeaderText, dynamicStyles.tableHeaderText, { flex: 2 }]}>File Name</Text>
+                  <Text style={[styles.tableHeaderText, dynamicStyles.tableHeaderText, { flex: 1 }]}>Size</Text>
+                  <Text style={[styles.tableHeaderText, dynamicStyles.tableHeaderText, { flex: 1 }]}>Action</Text>
                 </View>
                 
                 {/* Table Rows */}
                 {importedFiles.map((file) => (
-                  <View key={file.id} style={styles.tableRow}>
+                  <View key={file.id} style={[styles.tableRow, dynamicStyles.tableRow]}>
                     <View style={{ flex: 2 }}>
-                      <Text style={styles.fileName} numberOfLines={1}>
+                      <Text style={[styles.fileName, dynamicStyles.fileName]} numberOfLines={1}>
                         {file.originalName}
                       </Text>
-                      <Text style={styles.fileDate}>
+                      <Text style={[styles.fileDate, dynamicStyles.fileDate]}>
                         {formatDate(file.uploadedAt)}
                       </Text>
                     </View>
                     
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.fileSize}>
+                      <Text style={[styles.fileSize, dynamicStyles.fileSize]}>
                         {formatFileSize(file.fileSize)}
                       </Text>
                     </View>

@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getUserID } from '../utils/userUtils';
 import CustomHeader from '../components/CustomHeader';
 import { 
@@ -27,6 +28,7 @@ interface ProgramRow {
 
 const ProgramScreen = () => {
   const { user, isAdminCreatedUser } = useUser();
+  const { isUserDarkMode } = useTheme();
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramRow | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -125,23 +127,88 @@ const ProgramScreen = () => {
 
   const screenWidth = Dimensions.get('window').width;
 
+  // Dynamic styles based on dark mode
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    scrollContainer: {
+      backgroundColor: isUserDarkMode ? "#121212" : "#F0F4F3",
+    },
+    tableContainer: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    tableHeader: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    tableHeaderCell: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    tableRow: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#FFFFFF",
+      borderBottomColor: isUserDarkMode ? "#404040" : "#E0E0E0",
+    },
+    tableCell: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    modalOverlay: {
+      backgroundColor: isUserDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(0, 0, 0, 0.5)",
+    },
+    modalContent: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    modalHeader: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#667eea",
+    },
+    modalTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#FFFFFF",
+    },
+    modalSubtitle: {
+      color: isUserDarkMode ? "#B0B0B0" : "#FFFFFF",
+    },
+    chartScrollContainer: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    statsContainer: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#F8F9FA",
+    },
+    statCard: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#FFFFFF",
+    },
+    statValue: {
+      color: isUserDarkMode ? "#81C784" : "#2E7D32",
+    },
+    statLabel: {
+      color: isUserDarkMode ? "#B0B0B0" : "#666",
+    },
+    chartCard: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#FFFFFF",
+    },
+    chartTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    chartWrapper: {
+      backgroundColor: isUserDarkMode ? "#1E1E1E" : "#F8F9FA",
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <CustomHeader showLogo={true} isDatabaseScreen={false} />
       <ScrollView 
-        style={styles.scrollContainer} 
+        style={[styles.scrollContainer, dynamicStyles.scrollContainer]} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderCell}>Programs</Text>
+        <View style={[styles.tableContainer, dynamicStyles.tableContainer]}>
+          <View style={[styles.tableHeader, dynamicStyles.tableHeader]}>
+            <Text style={[styles.tableHeaderCell, dynamicStyles.tableHeaderCell]}>Programs</Text>
           </View>
           {filledPrograms.map((row, idx) => (
             <Pressable key={`program-${idx}-${row.program}`} onPress={() => handleRowPress(row)}>
-              <View style={styles.tableRow}>
-                <Text style={styles.tableCell}>{row.program}</Text>
+              <View style={[styles.tableRow, dynamicStyles.tableRow]}>
+                <Text style={[styles.tableCell, dynamicStyles.tableCell]}>{row.program}</Text>
               </View>
             </Pressable>
           ))}
@@ -158,36 +225,36 @@ const ProgramScreen = () => {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <LinearGradient colors={['#667eea', '#764ba2']} style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedProgram?.program}</Text>
-              <Text style={styles.modalSubtitle}>Program Analytics Dashboard</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <LinearGradient colors={isUserDarkMode ? ['#2D2D2D', '#1E1E1E'] : ['#667eea', '#764ba2']} style={[styles.modalHeader, dynamicStyles.modalHeader]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{selectedProgram?.program}</Text>
+              <Text style={[styles.modalSubtitle, dynamicStyles.modalSubtitle]}>Program Analytics Dashboard</Text>
             </LinearGradient>
             
             {/* PowerBI-style charts */}
             {selectedProgram && (
-              <ScrollView style={styles.chartScrollContainer} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+              <ScrollView style={[styles.chartScrollContainer, dynamicStyles.chartScrollContainer]} showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalChartContent}>
                 {/* Statistics Cards Row */}
-                <View style={styles.statsContainer}>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statValue}>{getChartData(selectedProgram).values.houses}</Text>
-                    <Text style={styles.statLabel}>Total Houses</Text>
+                <View style={[styles.statsContainer, dynamicStyles.statsContainer]}>
+                  <View style={[styles.statCard, dynamicStyles.statCard]}>
+                    <Text style={[styles.statValue, dynamicStyles.statValue]}>{getChartData(selectedProgram).values.houses}</Text>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Total Houses</Text>
                   </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statValue}>{getChartData(selectedProgram).values.completed}</Text>
-                    <Text style={styles.statLabel}>Completed</Text>
+                  <View style={[styles.statCard, dynamicStyles.statCard]}>
+                    <Text style={[styles.statValue, dynamicStyles.statValue]}>{getChartData(selectedProgram).values.completed}</Text>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Completed</Text>
                   </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statValue}>{getChartData(selectedProgram).values.remaining}</Text>
-                    <Text style={styles.statLabel}>Remaining</Text>
+                  <View style={[styles.statCard, dynamicStyles.statCard]}>
+                    <Text style={[styles.statValue, dynamicStyles.statValue]}>{getChartData(selectedProgram).values.remaining}</Text>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Remaining</Text>
                   </View>
                 </View>
 
                 {/* Bar Chart Card */}
-                <View style={styles.chartCard}>
-                  <Text style={styles.chartTitle}>📊 Program Progress Overview</Text>
-                  <View style={styles.chartWrapper}>
+                <View style={[styles.chartCard, dynamicStyles.chartCard]}>
+                  <Text style={[styles.chartTitle, dynamicStyles.chartTitle]}>📊 Program Progress Overview</Text>
+                  <View style={[styles.chartWrapper, dynamicStyles.chartWrapper]}>
                     <BarChart
                       data={getChartData(selectedProgram).barData}
                       width={screenWidth - 120}
@@ -374,9 +441,14 @@ const styles = StyleSheet.create({
   chartScrollContainer: {
     flex: 1,
   },
+  modalChartContent: {
+    paddingHorizontal: spacing.medium,
+    paddingBottom: spacing.large,
+  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: spacing.medium,
     marginBottom: spacing.large,
   },
   statCard: {

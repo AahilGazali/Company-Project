@@ -70,7 +70,7 @@ export default function AdminUsersScreen() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "User",
+    role: "Employee",
     status: "Active"
   })
 
@@ -91,7 +91,7 @@ export default function AdminUsersScreen() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "User",
+    role: "Employee",
     status: "Active"
   })
 
@@ -111,7 +111,7 @@ export default function AdminUsersScreen() {
           email: userData.email || "",
           projectName: userData.projectName || "",
           employeeId: userData.employeeId || "",
-          role: userData.role || "User",
+          role: userData.role || "Employee",
           status: userData.status || "Active",
           lastLogin: userData.lastLogin || "Never",
           createdAt: userData.createdAt,
@@ -318,7 +318,7 @@ export default function AdminUsersScreen() {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "User",
+        role: "Employee",
         status: "Active"
       })
     } catch (error) {
@@ -331,7 +331,7 @@ export default function AdminUsersScreen() {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "User",
+        role: "Employee",
         status: "Active"
       })
     }
@@ -357,7 +357,7 @@ export default function AdminUsersScreen() {
         email: user.email || "",
         password: "",
         confirmPassword: "",
-        role: user.role || "User",
+        role: user.role || "Employee",
         status: user.status || "Active"
       })
       setEditUserModalVisible(true)
@@ -645,7 +645,7 @@ export default function AdminUsersScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <CustomHeader showLogo={true} isDatabaseScreen={false} />
+      <CustomHeader showLogo={true} isDatabaseScreen={false} isAdmin={true} />
       
       <ScrollView 
         style={styles.scrollView}
@@ -728,7 +728,7 @@ export default function AdminUsersScreen() {
                       </Text>
                       <View style={styles.userMeta}>
                         <View style={[styles.roleBadge, { backgroundColor: user.role === 'Manager' ? '#2196F3' : '#4CAF50' }]}>
-                          <Text style={styles.roleText}>{user.role || 'User'}</Text>
+                          <Text style={styles.roleText}>{user.role || 'Employee'}</Text>
                         </View>
                         <View style={[styles.statusBadge, { backgroundColor: user.status === 'Active' ? '#4CAF50' : '#F44336' }]}>
                           <Text style={styles.statusText}>{user.status || 'Active'}</Text>
@@ -787,6 +787,12 @@ export default function AdminUsersScreen() {
               {Array.isArray(users) ? users.filter(u => u && u.role === 'Manager').length : 0}
             </Text>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Managers</Text>
+          </View>
+          <View style={[styles.statCard, dynamicStyles.statCard]}>
+            <Text style={styles.statNumber}>
+              {Array.isArray(users) ? users.filter(u => u && u.role === 'Employee').length : 0}
+            </Text>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Employees</Text>
           </View>
         </View>
       </ScrollView>
@@ -898,14 +904,14 @@ export default function AdminUsersScreen() {
               <View style={styles.formColumn}>
                 <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Role</Text>
                 <View style={styles.enhancedRoleContainer}>
-                  {["User", "Manager"].map((role) => (
+                  {["Employee", "Manager"].map((role) => (
                     <Pressable
                       key={role}
                       style={[
                         styles.enhancedRoleButton,
                         formData.role === role && styles.enhancedRoleButtonActive,
                         formData.role === role && role === "Manager" && styles.managerRoleActive,
-                        formData.role === role && role === "User" && styles.userRoleActive,
+                        formData.role === role && role === "Employee" && styles.userRoleActive,
                       ]}
                       onPress={() => {
                         try {
@@ -1125,14 +1131,14 @@ export default function AdminUsersScreen() {
               <View style={styles.formColumn}>
                 <Text style={[styles.inputLabel, dynamicStyles.inputLabel]}>Role</Text>
                 <View style={styles.enhancedRoleContainer}>
-                  {["User", "Manager"].map((role) => (
+                  {["Employee", "Manager"].map((role) => (
                     <Pressable
                       key={role}
                       style={[
                         styles.enhancedRoleButton,
                         editFormData.role === role && styles.enhancedRoleButtonActive,
                         editFormData.role === role && role === "Manager" && styles.managerRoleActive,
-                        editFormData.role === role && role === "User" && styles.userRoleActive,
+                        editFormData.role === role && role === "Employee" && styles.userRoleActive,
                       ]}
                       onPress={() => {
                         try {

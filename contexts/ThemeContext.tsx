@@ -4,8 +4,11 @@ import { useColorScheme } from 'react-native'
 
 interface ThemeContextType {
   isDarkMode: boolean
+  isUserDarkMode: boolean
   toggleDarkMode: () => void
+  toggleUserDarkMode: () => void
   setDarkMode: (value: boolean) => void
+  setUserDarkMode: (value: boolean) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
@@ -25,50 +28,84 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useColorScheme()
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isUserDarkMode, setIsUserDarkMode] = useState(false)
 
   useEffect(() => {
-    loadThemePreference()
+    loadThemePreferences()
   }, [])
 
-  const loadThemePreference = async () => {
+  const loadThemePreferences = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('darkMode')
-      if (savedTheme !== null) {
-        setIsDarkMode(JSON.parse(savedTheme))
+      // Load admin dark mode preference
+      const savedAdminTheme = await AsyncStorage.getItem('adminDarkMode')
+      if (savedAdminTheme !== null) {
+        setIsDarkMode(JSON.parse(savedAdminTheme))
       } else {
         // Default to system preference if no saved setting
         setIsDarkMode(systemColorScheme === 'dark')
       }
+
+      // Load user dark mode preference
+      const savedUserTheme = await AsyncStorage.getItem('userDarkMode')
+      if (savedUserTheme !== null) {
+        setIsUserDarkMode(JSON.parse(savedUserTheme))
+      } else {
+        // Default to light mode for user screens
+        setIsUserDarkMode(false)
+      }
     } catch (error) {
-      console.error('Error loading theme preference:', error)
-      // Fallback to system preference
+      console.error('Error loading theme preferences:', error)
+      // Fallback to system preference for admin, light mode for user
       setIsDarkMode(systemColorScheme === 'dark')
+      setIsUserDarkMode(false)
     }
   }
 
-  const saveThemePreference = async (value: boolean) => {
+  const saveAdminThemePreference = async (value: boolean) => {
     try {
-      await AsyncStorage.setItem('darkMode', JSON.stringify(value))
+      await AsyncStorage.setItem('adminDarkMode', JSON.stringify(value))
     } catch (error) {
-      console.error('Error saving theme preference:', error)
+      console.error('Error saving admin theme preference:', error)
+    }
+  }
+
+  const saveUserThemePreference = async (value: boolean) => {
+    try {
+      await AsyncStorage.setItem('userDarkMode', JSON.stringify(value))
+    } catch (error) {
+      console.error('Error saving user theme preference:', error)
     }
   }
 
   const toggleDarkMode = () => {
     const newValue = !isDarkMode
     setIsDarkMode(newValue)
-    saveThemePreference(newValue)
+    saveAdminThemePreference(newValue)
+  }
+
+  const toggleUserDarkMode = () => {
+    const newValue = !isUserDarkMode
+    setIsUserDarkMode(newValue)
+    saveUserThemePreference(newValue)
   }
 
   const setDarkMode = (value: boolean) => {
     setIsDarkMode(value)
-    saveThemePreference(value)
+    saveAdminThemePreference(value)
+  }
+
+  const setUserDarkMode = (value: boolean) => {
+    setIsUserDarkMode(value)
+    saveUserThemePreference(value)
   }
 
   const value: ThemeContextType = {
     isDarkMode,
+    isUserDarkMode,
     toggleDarkMode,
+    toggleUserDarkMode,
     setDarkMode,
+    setUserDarkMode,
   }
 
   return (

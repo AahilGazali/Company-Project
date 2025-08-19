@@ -9,18 +9,45 @@ import {
   isSmallDevice,
   isTablet
 } from '../utils/responsive';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface CustomHeaderProps {
   title?: string;
   showLogo?: boolean;
   isDatabaseScreen?: boolean;
   greeting?: string;
+  isAdmin?: boolean;
 }
 
-export default function CustomHeader({ title, showLogo = true, isDatabaseScreen = false, greeting }: CustomHeaderProps) {
+export default function CustomHeader({ title, showLogo = true, isDatabaseScreen = false, greeting, isAdmin = false }: CustomHeaderProps) {
+  const { isDarkMode, isUserDarkMode } = useTheme();
+
+  // Dynamic styles based on dark mode - separate logic for admin vs user
+  let shouldUseDarkMode = false;
+  
+  if (isAdmin) {
+    // For admin screens: only use admin dark mode
+    shouldUseDarkMode = isDarkMode;
+  } else {
+    // For user screens: only use user dark mode
+    shouldUseDarkMode = isUserDarkMode;
+  }
+  
+  const dynamicStyles = {
+    headerBackground: {
+      backgroundColor: shouldUseDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    databaseHeaderBackground: {
+      backgroundColor: shouldUseDarkMode ? "#1E1E1E" : "#FFFFFF",
+    },
+    greetingText: {
+      color: shouldUseDarkMode ? "#FFFFFF" : "#000000",
+    }
+  };
+
   return (
     <View style={[styles.headerContainer, isDatabaseScreen && styles.databaseHeaderContainer]}>
-      <View style={[styles.headerBackground, isDatabaseScreen && styles.databaseHeaderBackground]}>
+      <View style={[styles.headerBackground, isDatabaseScreen && styles.databaseHeaderBackground, dynamicStyles.headerBackground, isDatabaseScreen && dynamicStyles.databaseHeaderBackground]}>
         {/* Top Bar */}
         <View style={[styles.topBar, !isDatabaseScreen && styles.nonDatabaseTopBar]}>
           {showLogo && (
@@ -189,7 +216,7 @@ export default function CustomHeader({ title, showLogo = true, isDatabaseScreen 
           {/* Greeting for admin-created users - positioned below logo */}
           {greeting && isDatabaseScreen && (
             <View style={styles.greetingContainer}>
-              <Text style={styles.greetingText}>{greeting}</Text>
+              <Text style={[styles.greetingText, dynamicStyles.greetingText]}>{greeting}</Text>
             </View>
           )}
         </View>
@@ -294,15 +321,14 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: fontSize.xxLarge,
-    fontWeight: "900",
+    fontWeight: "400",
     color: "#000000",
     textAlign: "left",
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     marginBottom: spacing.small,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
     alignSelf: "flex-start",
+    fontFamily: "serif",
+    fontStyle: "normal",
   },
 });
