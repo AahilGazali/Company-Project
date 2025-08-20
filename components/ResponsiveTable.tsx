@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, borderRadius, getShadow, isSmallDevice, isTablet } from '../utils/responsive';
 
 interface TableColumn {
@@ -23,6 +24,7 @@ interface ResponsiveTableProps {
   onSave: (index: number) => void;
   onChange: (index: number, field: string, value: string) => void;
   onAddRow: () => void;
+  onDelete: (index: number) => void;
   isLoading?: boolean;
 }
 
@@ -35,6 +37,7 @@ export default function ResponsiveTable({
   onSave,
   onChange,
   onAddRow,
+  onDelete,
   isLoading = false
 }: ResponsiveTableProps) {
   
@@ -43,9 +46,9 @@ export default function ResponsiveTable({
     return (
       <View style={styles.cardContainer}>
         {data.map((row, idx) => (
-          <View key={`card-${idx}-${JSON.stringify(row).substring(0, 20)}`} style={styles.card}>
+          <View key={`card-${idx}`} style={styles.card}>
             {columns.map((column) => (
-              <View key={column.key} style={styles.cardRow}>
+              <View key={`${idx}-${column.key}`} style={styles.cardRow}>
                 <Text style={styles.cardLabel}>
                   {column.title}
                   {column.required && <Text style={{color:'red'}}>*</Text>}
@@ -60,6 +63,10 @@ export default function ResponsiveTable({
                     onChangeText={(val) => onChange(idx, column.key, val)}
                     placeholder={column.required ? "Required" : `Enter ${column.title}`}
                     keyboardType={column.key === 'noOfHouses' || column.key === 'completed' ? 'numeric' : 'default'}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
                   />
                 ) : (
                   <Text style={styles.cardValue}>{row[column.key] || '-'}</Text>
@@ -68,13 +75,23 @@ export default function ResponsiveTable({
             ))}
             <View style={styles.cardActions}>
               {editIndex === idx ? (
-                <Pressable style={styles.saveButton} onPress={() => onSave(idx)}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </Pressable>
+                <View style={styles.actionButtons}>
+                  <Pressable style={styles.saveButton} onPress={() => onSave(idx)}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </Pressable>
+                  <Pressable style={styles.deleteIconButton} onPress={() => onDelete(idx)}>
+                    <Ionicons name="trash-outline" size={20} color="#FFF" />
+                  </Pressable>
+                </View>
               ) : (
-                <Pressable style={styles.editButton} onPress={() => onEdit(idx)}>
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </Pressable>
+                <View style={styles.actionButtons}>
+                  <Pressable style={styles.editButton} onPress={() => onEdit(idx)}>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </Pressable>
+                  <Pressable style={styles.deleteIconButton} onPress={() => onDelete(idx)}>
+                    <Ionicons name="trash-outline" size={20} color="#FFF" />
+                  </Pressable>
+                </View>
               )}
             </View>
           </View>
@@ -105,14 +122,14 @@ export default function ResponsiveTable({
               {column.required && <Text style={{color:'red'}}>*</Text>}
             </Text>
           ))}
-          <Text style={[styles.tableHeaderCell, { width: 80 }]}>Actions</Text>
+          <Text style={[styles.tableHeaderCell, { width: 100 }]}>Actions</Text>
         </View>
 
         {/* Rows */}
         {data.map((row, idx) => (
-          <View key={`row-${idx}-${JSON.stringify(row).substring(0, 20)}`} style={styles.tableRow}>
+          <View key={`row-${idx}`} style={styles.tableRow}>
             {columns.map((column) => (
-              <View key={column.key} style={[styles.tableCellContainer, { width: column.width || 120 }]}>
+              <View key={`${idx}-${column.key}`} style={[styles.tableCellContainer, { width: column.width || 120 }]}>
                 {editIndex === idx ? (
                   <TextInput
                     style={[
@@ -123,22 +140,31 @@ export default function ResponsiveTable({
                     onChangeText={(val) => onChange(idx, column.key, val)}
                     placeholder={column.required ? "Required" : column.title}
                     keyboardType={column.key === 'noOfHouses' || column.key === 'completed' ? 'numeric' : 'default'}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
                   />
                 ) : (
                   <Text style={styles.tableCell}>{row[column.key] || '-'}</Text>
                 )}
               </View>
             ))}
-            <View style={[styles.tableCellContainer, { width: 80 }]}>
-              {editIndex === idx ? (
-                <Pressable style={styles.saveButton} onPress={() => onSave(idx)}>
-                  <Text style={styles.saveButtonText}>Save</Text>
+            <View style={[styles.tableCellContainer, { width: 100 }]}>
+              <View style={styles.actionButtons}>
+                {editIndex === idx ? (
+                  <Pressable style={styles.saveButton} onPress={() => onSave(idx)}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable style={styles.editButton} onPress={() => onEdit(idx)}>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </Pressable>
+                )}
+                <Pressable style={styles.deleteIconButton} onPress={() => onDelete(idx)}>
+                  <Ionicons name="trash-outline" size={18} color="#FFF" />
                 </Pressable>
-              ) : (
-                <Pressable style={styles.editButton} onPress={() => onEdit(idx)}>
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </Pressable>
-              )}
+              </View>
             </View>
           </View>
         ))}
@@ -287,6 +313,16 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     fontWeight: 'bold',
   },
+  deleteIconButton: {
+    backgroundColor: '#F44336',
+    paddingHorizontal: spacing.small,
+    paddingVertical: spacing.small,
+    borderRadius: borderRadius.small,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 36,
+    minHeight: 36,
+  },
   addButton: {
     marginTop: spacing.large,
     borderRadius: borderRadius.medium,
@@ -300,5 +336,12 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: fontSize.medium,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    gap: spacing.small,
   },
 });

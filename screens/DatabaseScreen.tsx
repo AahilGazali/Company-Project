@@ -354,6 +354,35 @@ export default function DatabaseScreen() {
     setEditIndex(programs.length);
   };
 
+  const handleDeleteProgram = async (index: number) => {
+    Alert.alert(
+      'Delete Program',
+      'Are you sure you want to delete this program?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            setPrograms((prev) => {
+              const updated = prev.filter((_, i) => i !== index);
+              saveRCMToFirestore(updated);
+              return updated;
+            });
+            // If we're editing the deleted row, clear edit mode
+            if (editIndex === index) {
+              setEditIndex(null);
+            }
+            // If we're editing a row after the deleted one, adjust the index
+            else if (editIndex !== null && editIndex > index) {
+              setEditIndex(editIndex - 1);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Format file size function
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -678,6 +707,7 @@ export default function DatabaseScreen() {
               onSave={handleSave}
               onChange={handleChange}
               onAddRow={handleAddProgram}
+              onDelete={handleDeleteProgram}
               isLoading={loadingRCM}
             />
           )

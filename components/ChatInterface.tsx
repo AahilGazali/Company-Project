@@ -231,6 +231,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     } else {
       GeminiService.setDataContext(null)
       setHasDataContext(false)
+      setShowActionButtons(false)
     }
   }, [dataAnalysis])
 
@@ -271,6 +272,11 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return
+
+    // Hide action buttons once user starts interacting
+    if (showActionButtons) {
+      setShowActionButtons(false)
+    }
 
     // Add user message
     addMessage(message, true)
