@@ -10,6 +10,8 @@ import SplashScreen from './components/SplashScreen'; // Import SplashScreen
 import { initializeAdminCredentials } from './utils/initializeAdmin';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+// Import Firebase configuration to ensure it's initialized
+import './firebaseConfig';
 
 const Stack = createNativeStackNavigator();
 
