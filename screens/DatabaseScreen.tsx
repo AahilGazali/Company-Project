@@ -9,6 +9,7 @@ import ImportedFilesService, { ImportedFile } from '../services/importedFilesSer
 import { ExcelAnalysisService, ExcelAnalysis } from '../services/excelAnalysisService';
 import ChartDataService from '../services/chartDataService';
 import DashboardStorageService from '../services/dashboardStorageService';
+import { FirebaseDataService } from '../services/firebaseDataService';
 import ResponsiveTable from '../components/ResponsiveTable';
 import CustomHeader from '../components/CustomHeader';
 
@@ -210,7 +211,21 @@ export default function DatabaseScreen() {
           const savedFileId = await ImportedFilesService.saveImportedFile(fileRecord);
           console.log('File record saved with ID:', savedFileId);
           
-          // Analyze Excel file for AI chat context and generate dashboard
+          // Upload Excel data to Firebase for natural language querying
+          try {
+            console.log('📤 Starting Firebase data upload...');
+            const firebaseResult = await FirebaseDataService.uploadExcelToFirebase(uploadResult.url!, file.name);
+            
+            if (firebaseResult.success) {
+              console.log('✅ Firebase upload successful:', firebaseResult.message);
+            } else {
+              console.error('❌ Firebase upload failed:', firebaseResult.message);
+            }
+          } catch (firebaseError) {
+            console.error('❌ Firebase upload error:', firebaseError);
+          }
+          
+          // Also analyze Excel file for AI chat context and generate dashboard (legacy support)
           try {
             console.log('🔍 Starting Excel analysis for AI context...');
             const analysis = await ExcelAnalysisService.analyzeExcelFile(uploadResult.url!, file.name);
@@ -220,8 +235,6 @@ export default function DatabaseScreen() {
             // Generate dashboard charts from Excel data
             try {
               console.log('📊 Generating dashboard charts...');
-              
-              console.log('🔄 Starting dashboard data generation...');
               const dashboardData = await ChartDataService.generateDashboardData(
                 savedFileId,
                 file.name,
@@ -229,7 +242,8 @@ export default function DatabaseScreen() {
                 analysis
               );
               
-              console.log('🔄 Saving dashboard to Firestore...');
+              console.log('✅ Dashboard data generated successfully');
+              
               // Save dashboard to Firestore
               try {
                 const dashboardId = await DashboardStorageService.saveDashboard(
@@ -238,31 +252,23 @@ export default function DatabaseScreen() {
                   userId,
                   dashboardData
                 );
-                              console.log('✅ Dashboard generated and saved successfully with ID:', dashboardId);
-              
-              // Verify dashboard was created
-              const dashboardExists = await DashboardStorageService.dashboardExistsForFile(savedFileId);
-              console.log('🔍 Dashboard verification:', dashboardExists ? '✅ Found' : '❌ Not found');
-              
-              // Get total dashboard count for user
-              const dashboardCount = await DashboardStorageService.getUserDashboardCount(userId);
-              console.log('📊 Total dashboards for user:', dashboardCount);
-            } catch (saveError: any) {
-              console.error('❌ Error saving dashboard to Firestore:', saveError);
-              if (saveError.code === 'permission-denied' || saveError.message?.includes('permission')) {
-                console.warn('⚠️ Permission denied when saving dashboard (checking Firestore rules)');
+                console.log('✅ Dashboard generated and saved successfully with ID:', dashboardId);
+                
+                // Verify dashboard was created
+                const dashboardExists = await DashboardStorageService.dashboardExistsForFile(savedFileId);
+                console.log('🔍 Dashboard verification:', dashboardExists ? '✅ Found' : '❌ Not found');
+                
+                // Get total dashboard count for user
+                const dashboardCount = await DashboardStorageService.getUserDashboardCount(userId);
+                console.log('📊 Total dashboards for user:', dashboardCount);
+              } catch (saveError: any) {
+                console.error('❌ Error saving dashboard to Firestore:', saveError);
               }
-              // Continue without dashboard - file upload was successful
-            }
             } catch (dashboardError: any) {
               console.error('❌ Error generating dashboard data:', dashboardError);
-              console.error('❌ Dashboard error details:', dashboardError?.message || 'Unknown error');
-              console.error('❌ Dashboard error stack:', dashboardError?.stack || 'No stack trace');
-              // Continue without dashboard - file upload was successful
             }
           } catch (analysisError) {
             console.error('❌ Error analyzing Excel file:', analysisError);
-            // Continue without analysis - chat will work without data context
           }
           
           // Refresh the imported files list

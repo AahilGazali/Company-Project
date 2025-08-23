@@ -1,9 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ExcelAnalysis, ExcelAnalysisService } from './excelAnalysisService';
+import { SearchIndexService, SearchResult } from './searchIndexService';
 // import { GEMINI_API_KEY } from '@env';
 
 // Initialize the Gemini API with hardcoded key for testing
 const GEMINI_API_KEY = 'AIzaSyAfDQq5Fu_CgpzKgnpWJn1kIOdD6iotDNo';
+
+// Validate API key before initializing
+if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+  console.error('❌ GEMINI_API_KEY is not set or empty');
+} else {
+  console.log('✅ Gemini API key loaded:', GEMINI_API_KEY.substring(0, 10) + '...');
+}
+
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Get the generative model - use gemini-1.5-flash with fallback to gemini-1.5-pro
@@ -44,6 +53,45 @@ export class GeminiService {
     currentModel = getModel(!isCurrentlyPro);
     console.log(`🔄 Switched to ${!isCurrentlyPro ? 'gemini-1.5-pro' : 'gemini-1.5-flash'} due to overload`);
   }
+
+  // Handle network errors with local fallback
+  private static async handleNetworkErrorFallback(userQuery: string): Promise<ChatResponse> {
+    try {
+      console.log('🔍 Using local search fallback for query:', userQuery);
+      
+      if (!this.dataContext.hasData || !this.dataContext.analysis) {
+        return {
+          success: false,
+          error: 'No data available and cannot connect to AI service. Please upload an Excel file and check your internet connection.'
+        };
+      }
+
+      // Use local search without AI assistance
+      const searchResult = SearchIndexService.searchData(userQuery);
+      
+      if (!searchResult.success || searchResult.results.length === 0) {
+        return {
+          success: true,
+          message: `🔍 **Local Search Results** (AI service unavailable)\n\nI searched your data for "${userQuery}" but didn't find any matching results. This might be because:\n\n• The search terms don't match your data\n• The AI service is temporarily unavailable\n\nTry using specific column names from your data or simpler search terms.`
+        };
+      }
+
+      // Create a simple response without AI formatting
+      const response = this.createSearchFallbackResponse(userQuery, searchResult);
+      
+      return {
+        success: true,
+        message: response
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Error in network fallback:', error);
+      return {
+        success: false,
+        error: 'Both AI service and local search failed. Please check your data and try again.'
+      };
+    }
+  }
   
   // Set Excel data context for AI queries
   static setDataContext(analysis: ExcelAnalysis | null) {
@@ -54,8 +102,23 @@ export class GeminiService {
         contextString: ExcelAnalysisService.generateDataContext(analysis)
       };
       console.log('📊 Data context set for:', analysis.fileName);
+      
+             // Build search index for natural language queries
+       try {
+         SearchIndexService.buildSearchIndex(analysis);
+         console.log('🔍 Search index built successfully');
+         
+         // Verify full dataset is accessible
+         SearchIndexService.verifyFullDataset();
+         
+         // Debug data completeness (show sample records from throughout the dataset)
+         SearchIndexService.debugDataCompleteness();
+       } catch (error) {
+         console.error('⚠️ Failed to build search index:', error);
+       }
     } else {
       this.dataContext = { hasData: false };
+      SearchIndexService.clearIndex();
       console.log('🔄 Data context cleared');
     }
   }
@@ -86,6 +149,12 @@ export class GeminiService {
     } catch (error: any) {
       console.error('Error sending message:', error);
       
+      // Check for network errors first
+      if (error.message && error.message.includes('Network request failed')) {
+        console.log('🔄 Network error detected, trying local search fallback...');
+        return await this.handleNetworkErrorFallback(message);
+      }
+      
       // Check if model is overloaded and switch
       if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
         this.switchModel();
@@ -101,6 +170,12 @@ export class GeminiService {
           };
         } catch (retryError: any) {
           console.error('Retry failed:', retryError);
+          
+          // If retry also fails with network error, use fallback
+          if (retryError.message && retryError.message.includes('Network request failed')) {
+            console.log('🔄 Retry also failed with network error, using fallback...');
+            return await this.handleNetworkErrorFallback(message);
+          }
         }
       }
       
@@ -159,6 +234,62 @@ export class GeminiService {
     }
   }
   
+  // Natural language search using search index
+  static async naturalLanguageSearch(userQuery: string): Promise<ChatResponse> {
+    console.log('🔍 Starting natural language search for:', userQuery);
+    
+    try {
+      // Step 1: Use search index for fast keyword matching
+      const searchResult = SearchIndexService.searchData(userQuery);
+      
+      if (!searchResult.success) {
+        console.log('❌ Search index query failed:', searchResult.error);
+        // Fallback to AI-based query
+        return await this.queryUploadedDataWithSearch(userQuery);
+      }
+      
+      console.log('✅ Search index found:', searchResult.totalCount, 'results');
+      
+      // Step 2: If we have results, format them with AI
+      if (searchResult.results.length > 0) {
+        try {
+          const formattedResponse = await this.formatSearchResults(userQuery, searchResult);
+          return formattedResponse;
+        } catch (formatError: any) {
+          console.error('❌ Error formatting search results:', formatError);
+          
+          // Check for network errors in formatting
+          if (formatError.message && formatError.message.includes('Network request failed')) {
+            console.log('🔄 Network error in formatting, using local fallback...');
+            return {
+              success: true,
+              message: this.createSearchFallbackResponse(userQuery, searchResult)
+            };
+          }
+          
+          // Re-throw other errors to be handled by outer catch
+          throw formatError;
+        }
+      }
+      
+      // Step 3: If no results from search index, try AI-based approach
+      console.log('🔄 No results from search index, trying AI-based query...');
+      return await this.queryUploadedDataWithSearch(userQuery);
+      
+    } catch (error: any) {
+      console.error('❌ Natural language search error:', error);
+      
+      // Check for network errors and use local fallback
+      if (error.message && error.message.includes('Network request failed')) {
+        console.log('🔄 Network error in search, using local fallback...');
+        return await this.handleNetworkErrorFallback(userQuery);
+      }
+      
+      // Fallback to AI-based query for other errors
+      return await this.queryUploadedDataWithSearch(userQuery);
+    }
+  }
+
   // Send a message specifically about uploaded data with enhanced search
   static async queryUploadedDataWithSearch(userQuery: string): Promise<ChatResponse> {
     if (!this.dataContext.hasData || !this.dataContext.analysis) {
@@ -885,6 +1016,153 @@ export class GeminiService {
   }
   
   /**
+   * Format search results from search index
+   */
+  private static async formatSearchResults(userQuery: string, searchResult: SearchResult): Promise<ChatResponse> {
+    console.log('🎨 Formatting search results for user...');
+    console.log('📊 Search results to format:', {
+      totalCount: searchResult.totalCount,
+      resultsLength: searchResult.results.length,
+      matchedColumns: searchResult.matchedColumns
+    });
+    
+    try {
+      // Build prompt for AI to format search results
+      const formattingPrompt = this.buildSearchResultFormattingPrompt(userQuery, searchResult);
+      
+      console.log('🤖 Sending search results to AI for formatting...');
+      
+      const result = await currentModel.generateContent(formattingPrompt);
+      const response = await result.response;
+      const formattedResponse = response.text();
+      
+      console.log('✅ AI search result formatting completed');
+      
+      return {
+        success: true,
+        message: formattedResponse
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Error formatting search results:', error);
+      
+      // Fallback formatting if AI fails
+      const fallbackResponse = this.createSearchFallbackResponse(userQuery, searchResult);
+      
+      return {
+        success: true,
+        message: fallbackResponse
+      };
+    }
+  }
+
+  /**
+   * Build prompt for formatting search results
+   */
+  private static buildSearchResultFormattingPrompt(userQuery: string, searchResult: SearchResult): string {
+    const isListQuery = userQuery.toLowerCase().includes('list') || 
+                       userQuery.toLowerCase().includes('show') || 
+                       userQuery.toLowerCase().includes('all') ||
+                       userQuery.toLowerCase().includes('display');
+    
+    const isLastQuery = userQuery.toLowerCase().includes('last') || 
+                       userQuery.toLowerCase().includes('recent');
+    
+    // For list queries or last/recent queries, show ALL results
+    const maxResults = (isListQuery || isLastQuery) ? searchResult.results.length : 10;
+    const resultsToShow = searchResult.results.slice(0, maxResults);
+    
+    return `You are a helpful data analyst assistant. The user asked: "${userQuery}"
+
+I found ${searchResult.totalCount} results in the Excel data. Here are the results:
+
+${JSON.stringify(resultsToShow, null, 2)}
+
+Matched columns: ${searchResult.matchedColumns.join(', ')}
+
+IMPORTANT INSTRUCTIONS:
+${isLastQuery ? 
+  'The user is asking for the LAST/MOST RECENT entries. These results are already sorted by date (most recent first). Present them as the actual latest records from the dataset.' : 
+  'If the user is asking to "list", "show", or "display" data, focus on presenting the actual data in a clear, readable format. Do NOT just give a summary.'
+}
+
+Please provide a response that:
+1. Answers the user's question directly
+2. ${isListQuery || isLastQuery ? 'Presents the actual data in a clear, tabular format' : 'Shows key information from the results'}
+3. Uses markdown formatting for better readability
+4. ${isLastQuery ? 'Clearly indicates these are the most recent entries' : isListQuery ? 'If there are more than ' + maxResults + ' results, mention how many more are available' : 'Mentions how many results were found'}
+
+${isListQuery || isLastQuery ? 'Format the data as a table or list that is easy to read. Show the actual values, not just a summary.' : 'Keep the response concise but informative.'}`;
+  }
+
+  /**
+   * Create fallback response for search results when AI fails
+   */
+  private static createSearchFallbackResponse(userQuery: string, searchResult: SearchResult): string {
+    console.log('🔄 Creating fallback response for search results...');
+    
+    const isListQuery = userQuery.toLowerCase().includes('list') || 
+                       userQuery.toLowerCase().includes('show') || 
+                       userQuery.toLowerCase().includes('all') ||
+                       userQuery.toLowerCase().includes('display');
+    
+    const isLastQuery = userQuery.toLowerCase().includes('last') || 
+                       userQuery.toLowerCase().includes('recent');
+    
+    // For list queries or last/recent queries, show ALL results
+    const maxResults = (isListQuery || isLastQuery) ? searchResult.results.length : 5;
+    const resultsToShow = searchResult.results.slice(0, maxResults);
+    
+    let response = `🔍 **Search Results for:** "${userQuery}"\n\n`;
+    response += `📊 **Found ${searchResult.totalCount} results**\n`;
+    response += `🎯 **Matched columns:** ${searchResult.matchedColumns.join(', ')}\n\n`;
+    
+    if (resultsToShow.length > 0) {
+      if (isListQuery || isLastQuery) {
+        response += `📋 **${isLastQuery ? 'Most Recent' : ''} Results:**\n\n`;
+        
+        // Create a table format for list queries
+        const columns = Object.keys(resultsToShow[0]);
+        response += `| ${columns.join(' | ')} |\n`;
+        response += `| ${columns.map(() => '---').join(' | ')} |\n`;
+        
+        resultsToShow.forEach((result) => {
+          const row = columns.map(col => {
+            const value = result[col];
+            return value !== null && value !== undefined && value !== '' ? String(value) : '-';
+          });
+          response += `| ${row.join(' | ')} |\n`;
+        });
+        
+        response += '\n';
+      } else {
+        response += `📋 **Sample Results:**\n\n`;
+        
+        resultsToShow.forEach((result, index) => {
+          response += `**${index + 1}.** `;
+          Object.entries(result).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+              response += `${key}: ${value} | `;
+            }
+          });
+          response = response.slice(0, -3); // Remove last " | "
+          response += '\n\n';
+        });
+      }
+      
+      if (searchResult.totalCount > resultsToShow.length) {
+        response += `... and ${searchResult.totalCount - resultsToShow.length} more results.\n\n`;
+      }
+    } else {
+      response += `❌ No results found matching your query.\n\n`;
+    }
+    
+    response += `💡 **Tip:** Try rephrasing your question or ask about specific columns in your data.`;
+    
+    return response;
+  }
+
+  /**
    * Create fallback response showing ALL results when AI formatting fails
    */
   private static createFallbackResponse(userQuery: string, queryResults: any): string {
@@ -1263,13 +1541,34 @@ Always respond exactly in this format.`;
     return summary;
   }
   
-  // Validate API key
+  // Validate API key and network connection
   static async validateApiKey(): Promise<boolean> {
     try {
-      const response = await this.sendMessage('Hello', false);
-      return response.success;
-    } catch (error) {
+      console.log('🔧 Testing Gemini API connection...');
+      const result = await currentModel.generateContent('Hello');
+      const response = await result.response;
+      const text = response.text();
+      console.log('✅ Gemini API connection successful');
+      return true;
+    } catch (error: any) {
+      console.error('❌ Gemini API validation failed:', error.message);
+      
+      if (error.message && error.message.includes('Network request failed')) {
+        console.log('🌐 Network connectivity issue detected');
+      } else if (error.message && error.message.includes('API_KEY')) {
+        console.log('🔑 API key issue detected');
+      }
+      
       return false;
+    }
+  }
+
+  // Test API connection on startup
+  static async testConnection(): Promise<void> {
+    console.log('🔧 Testing Gemini API connection on startup...');
+    const isValid = await this.validateApiKey();
+    if (!isValid) {
+      console.log('⚠️ Gemini AI service unavailable - local search fallback will be used');
     }
   }
 

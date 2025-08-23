@@ -160,17 +160,30 @@ export class ChartDataService {
     if (locationColumns.length === 0) return null;
 
     const locationColumn = locationColumns[0];
+    console.log(`📍 Using location column: "${locationColumn}"`);
+    
     const locationCounts = this.countOccurrences(data, locationColumn);
     
-    // Sort by count and take top 10 (as requested)
-    const sortedData = Object.entries(locationCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-      .map(([label, value], index) => ({
-        label: this.truncateLabel(label),
-        value,
-        color: this.getColorForIndex(index)
-      }));
+    // Debug: Log all unique location values found
+    console.log('📍 All unique location values found:');
+    Object.keys(locationCounts).forEach((location, index) => {
+      console.log(`  ${index + 1}. "${location}" (${locationCounts[location]} occurrences)`);
+    });
+    
+         // Sort by count and take top 10 (as requested)
+     const sortedData = Object.entries(locationCounts)
+       .sort(([,a], [,b]) => b - a)
+       .slice(0, 10)
+       .map(([label, value], index) => ({
+         label: label, // Show full location names without truncation
+         value,
+         color: this.getColorForIndex(index)
+       }));
+
+    console.log('🏆 Top 10 locations for chart:');
+    sortedData.forEach((item, index) => {
+      console.log(`  ${index + 1}. "${item.label}" (${item.value} occurrences)`);
+    });
 
     return {
       type: 'location',
@@ -196,7 +209,7 @@ export class ChartDataService {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 10)
       .map(([label, value], index) => ({
-        label: this.truncateLabel(label),
+        label: label, // Show full action names without truncation
         value,
         color: this.getColorForIndex(index)
       }));
@@ -337,7 +350,7 @@ export class ChartDataService {
     if (data.length === 0) return [];
     
     const headers = Object.keys(data[0]);
-    return headers.filter(header => 
+    const locationColumns = headers.filter(header => 
       header.toLowerCase().includes('location') ||
       header.toLowerCase().includes('site') ||
       header.toLowerCase().includes('building') ||
@@ -345,6 +358,23 @@ export class ChartDataService {
       header.toLowerCase().includes('zone') ||
       header.toLowerCase().includes('functional location')
     );
+    
+    // Sort to prioritize "Location" over "Functional Location"
+    return locationColumns.sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      
+      // If one is exactly "location" and the other isn't, prioritize "location"
+      if (aLower === 'location' && bLower !== 'location') return -1;
+      if (bLower === 'location' && aLower !== 'location') return 1;
+      
+      // If one contains "functional location" and the other doesn't, prioritize the non-functional one
+      if (aLower.includes('functional location') && !bLower.includes('functional location')) return 1;
+      if (bLower.includes('functional location') && !aLower.includes('functional location')) return -1;
+      
+      // Otherwise, maintain alphabetical order
+      return aLower.localeCompare(bLower);
+    });
   }
 
   /**

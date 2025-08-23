@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, getDocs, query, where, orderBy, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, getDocs, getDoc, query, where, orderBy, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { DashboardData } from './chartDataService';
 

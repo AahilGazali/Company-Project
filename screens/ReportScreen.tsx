@@ -207,7 +207,7 @@ export default function ReportsScreen() {
           </Text>
           <Text style={styles.emptySubtext}>
             Your dashboards will show:
-            {'\n'}• Location-based analysis
+            {'\n'}• Top 10 locations with high repetition
             {'\n'}• Action/task distributions
             {'\n'}• MMT number insights
             {'\n'}• Timeline trends
@@ -260,6 +260,27 @@ export default function ReportsScreen() {
     },
     dashboardHeaderTitle: {
       color: isUserDarkMode ? "#FFFFFF" : "#333",
+    },
+    dashboardSelector: {
+      backgroundColor: isUserDarkMode ? "#2D2D2D" : "#ffffff",
+      borderColor: isUserDarkMode ? "#374151" : "#e5e7eb",
+    },
+    dashboardSelectorTitle: {
+      color: isUserDarkMode ? "#FFFFFF" : "#1f2937",
+    },
+    dashboardOption: {
+      backgroundColor: isUserDarkMode ? "#374151" : "#f3f4f6",
+      borderColor: isUserDarkMode ? "#4b5563" : "#d1d5db",
+    },
+    dashboardOptionSelected: {
+      backgroundColor: isUserDarkMode ? "#3b82f6" : "#3b82f6",
+      borderColor: isUserDarkMode ? "#60a5fa" : "#2563eb",
+    },
+    dashboardOptionText: {
+      color: isUserDarkMode ? "#d1d5db" : "#374151",
+    },
+    dashboardOptionTextSelected: {
+      color: isUserDarkMode ? "#ffffff" : "#ffffff",
     }
   };
 
@@ -270,7 +291,42 @@ export default function ReportsScreen() {
         style={[styles.container, dynamicStyles.container]} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, dynamicStyles.scrollContent]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
+        {/* Dashboard Selector */}
+        {dashboards.length > 1 && (
+          <View style={[styles.dashboardSelector, dynamicStyles.dashboardSelector]}>
+            <Text style={[styles.dashboardSelectorTitle, dynamicStyles.dashboardSelectorTitle]}>
+              📊 Select Dashboard
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dashboardOptionsContainer}>
+              {dashboards.map((dashboard, index) => (
+                <Pressable
+                  key={dashboard.id || index}
+                  style={[
+                    styles.dashboardOption,
+                    dynamicStyles.dashboardOption,
+                    selectedDashboard?.id === dashboard.id && styles.dashboardOptionSelected,
+                    selectedDashboard?.id === dashboard.id && dynamicStyles.dashboardOptionSelected
+                  ]}
+                  onPress={() => handleDashboardSelect(dashboard)}
+                >
+                  <Text style={[
+                    styles.dashboardOptionText,
+                    dynamicStyles.dashboardOptionText,
+                    selectedDashboard?.id === dashboard.id && styles.dashboardOptionTextSelected,
+                    selectedDashboard?.id === dashboard.id && dynamicStyles.dashboardOptionTextSelected
+                  ]}>
+                    {dashboard.fileName.replace(/\.[^/.]+$/, '')}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Dashboard Content */}
         {selectedDashboard ? (
           <View style={[styles.dashboardContent, dynamicStyles.dashboardContent]}>
@@ -278,6 +334,9 @@ export default function ReportsScreen() {
               <View style={styles.dashboardHeaderContent}>
                 <Text style={[styles.dashboardHeaderTitle, dynamicStyles.dashboardHeaderTitle]}>
                   📊 {selectedDashboard.fileName.replace(/\.[^/.]+$/, '')}
+                </Text>
+                <Text style={styles.dashboardHeaderSubtitle}>
+                  Top 10 Locations with High Repetition Analysis
                 </Text>
               </View>
             </View>
@@ -353,6 +412,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.medium,
   },
 
+  dashboardSelector: {
+    backgroundColor: '#ffffff',
+    padding: spacing.large,
+    margin: isTablet() ? spacing.large : spacing.medium,
+    marginTop: isTablet() ? spacing.xLarge : spacing.large,
+    borderRadius: borderRadius.large,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    ...getShadow(4),
+    elevation: isTablet() ? 6 : 4,
+  },
+  dashboardSelectorTitle: {
+    fontSize: isTablet() ? fontSize.xLarge : fontSize.large,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: spacing.medium,
+    textAlign: 'center',
+  },
+  dashboardOptionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.small,
+  },
+  dashboardOption: {
+    backgroundColor: '#f3f4f6',
+    paddingVertical: spacing.medium,
+    paddingHorizontal: spacing.large,
+    marginHorizontal: spacing.small,
+    borderRadius: borderRadius.medium,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  dashboardOptionSelected: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#2563eb',
+  },
+  dashboardOptionText: {
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  dashboardOptionTextSelected: {
+    color: '#ffffff',
+  },
+
   dashboardContent: {
     flex: 1,
   },
@@ -379,6 +485,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-
-
+  dashboardHeaderSubtitle: {
+    fontSize: isTablet() ? fontSize.medium : fontSize.small,
+    color: '#e2e8f0',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
 });

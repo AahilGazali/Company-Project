@@ -61,7 +61,18 @@ export class ExcelAnalysisService {
       
       const arrayBuffer = await response.arrayBuffer();
       console.log('📦 Downloaded file size:', arrayBuffer.byteLength, 'bytes');
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      // Read workbook with options to ensure we get ALL data
+      const workbook = XLSX.read(arrayBuffer, { 
+        type: 'array',
+        cellStyles: false, // Don't read styles to save memory
+        cellNF: false, // Don't read number formats
+        sheetStubs: false, // Don't include empty cells
+        raw: false, // Convert all values to strings for consistency
+        dense: false // Use normal structure for easier processing
+      });
+      
+      console.log(`📊 Workbook loaded with ${workbook.SheetNames.length} sheets: [${workbook.SheetNames.join(', ')}]`);
       
       const sheets: ExcelSheetAnalysis[] = [];
       const allColumns = new Set<string>();
@@ -70,12 +81,31 @@ export class ExcelAnalysisService {
       // Analyze each sheet
       for (const sheetName of workbook.SheetNames) {
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-        if (jsonData.length === 0) continue;
+        // Get sheet range to ensure we're reading all data
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+        console.log(`📊 Sheet "${sheetName}" range: ${worksheet['!ref']} (${range.e.r + 1} rows, ${range.e.c + 1} columns)`);
+        
+        // Read all data with explicit options to ensure no limits
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,
+          raw: false, // Convert values to strings for consistency
+          defval: '', // Default value for empty cells
+          blankrows: false // Skip completely blank rows
+        });
+        
+        console.log(`📋 Raw data rows read from "${sheetName}": ${jsonData.length}`);
+        
+        if (jsonData.length === 0) {
+          console.log(`⚠️ No data found in sheet: ${sheetName}`);
+          continue;
+        }
         
         const headers = jsonData[0] as string[];
         const dataRows = jsonData.slice(1);
+        
+        console.log(`📊 Headers found: ${headers.length}`);
+        console.log(`📋 Data rows after header: ${dataRows.length}`);
         
         // Analyze columns
         const columns: ExcelColumn[] = headers.map((header, index) => {
@@ -117,7 +147,8 @@ export class ExcelAnalysisService {
         });
         
         // Get ALL data rows for complete dataset with preprocessing
-        const allDataRows = dataRows.map(row => {
+        console.log(`🔄 Processing all ${dataRows.length} data rows for complete dataset...`);
+        const allDataRows = dataRows.map((row, rowIndex) => {
           const obj: any = {};
           headers.forEach((header, index) => {
             let value = (row as any[])[index];
@@ -159,6 +190,7 @@ export class ExcelAnalysisService {
         
         // Add to full dataset
         fullData.push(...allDataRows);
+        console.log(`✅ Added ${allDataRows.length} rows from "${sheetName}" to full dataset. Total so far: ${fullData.length}`);
         
         // Generate sheet summary
         const summary = this.generateSheetSummary(sheetName, dataRows.length, columns);
@@ -180,6 +212,61 @@ export class ExcelAnalysisService {
       
       console.log('✅ Excel analysis completed successfully');
       console.log(`📊 Full dataset loaded: ${fullData.length} total records`);
+      
+      // Debug: Show date range of the data
+      const dateColumns = ['Date', 'Date Functional', 'Functional Date'];
+      let dateColumn = null;
+      for (const col of dateColumns) {
+        if (allColumns.has(col)) {
+          dateColumn = col;
+          break;
+        }
+      }
+      
+      if (dateColumn) {
+        const dates = fullData
+          .map(row => row[dateColumn])
+          .filter(date => date)
+          .sort();
+        
+        if (dates.length > 0) {
+          console.log(`📅 Date range in data: ${dates[0]} to ${dates[dates.length - 1]}`);
+          console.log(`📅 Total unique dates: ${new Set(dates).size}`);
+        }
+      }
+      
+      // Debug: Show sample of first and last records to verify complete dataset
+      if (fullData.length > 0) {
+        console.log(`📋 VERIFICATION - First 3 records:`);
+        fullData.slice(0, 3).forEach((record, index) => {
+          const mmt = record['MMT No'] || record['Sr. No'] || 'N/A';
+          const date = record[dateColumn || 'Date'] || 'N/A';
+          const location = record['Location'] || record['Functional Location'] || 'N/A';
+          console.log(`   ${index + 1}. MMT: ${mmt}, Date: ${date}, Location: ${location}`);
+        });
+        
+        console.log(`📋 VERIFICATION - Last 5 records (${fullData.length - 4} to ${fullData.length}):`);
+        fullData.slice(-5).forEach((record, index) => {
+          const mmt = record['MMT No'] || record['Sr. No'] || 'N/A';
+          const date = record[dateColumn || 'Date'] || 'N/A';
+          const location = record['Location'] || record['Functional Location'] || 'N/A';
+          const actualIndex = fullData.length - 5 + index + 1;
+          console.log(`   ${actualIndex}. MMT: ${mmt}, Date: ${date}, Location: ${location}`);
+        });
+        
+        // Show some records from the middle to verify continuity
+        if (fullData.length > 10) {
+          const midIndex = Math.floor(fullData.length / 2);
+          console.log(`📋 VERIFICATION - Middle records around index ${midIndex}:`);
+          fullData.slice(midIndex - 2, midIndex + 3).forEach((record, index) => {
+            const mmt = record['MMT No'] || record['Sr. No'] || 'N/A';
+            const date = record[dateColumn || 'Date'] || 'N/A';
+            const location = record['Location'] || record['Functional Location'] || 'N/A';
+            const actualIndex = midIndex - 2 + index + 1;
+            console.log(`   ${actualIndex}. MMT: ${mmt}, Date: ${date}, Location: ${location}`);
+          });
+        }
+      }
       
       return {
         fileName,

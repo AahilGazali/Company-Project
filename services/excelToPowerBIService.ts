@@ -31,13 +31,14 @@ export class ExcelToPowerBIService {
       console.log('1️⃣ Creating PowerBI dataset...');
       
       const datasetName = `${fileName.replace(/\.[^/.]+$/, '')}_${Date.now()}`;
-      const sheets = excelAnalysis.sheets.map(sheet => ({
-        name: sheet.name,
-        columns: sheet.columns.map(col => ({
-          name: col.name,
-          type: col.type
+      // Create a single sheet structure from the ExcelAnalysis
+      const sheets = [{
+        name: 'Sheet1',
+        columns: excelAnalysis.columns.map(colName => ({
+          name: colName,
+          type: excelAnalysis.dataTypes[colName] || 'string'
         }))
-      }));
+      }];
 
       const datasetResult = await PowerBIService.createDataset(datasetName, sheets);
       
@@ -71,7 +72,7 @@ export class ExcelToPowerBIService {
       // Step 4: Save Dashboard metadata to Firestore
       console.log('4️⃣ Saving dashboard metadata...');
       
-      const totalRows = excelAnalysis.sheets.reduce((sum, sheet) => sum + sheet.rowCount, 0);
+      const totalRows = excelAnalysis.totalRows;
       
       const dashboardRequest: DashboardCreationRequest = {
         fileId,
@@ -83,7 +84,7 @@ export class ExcelToPowerBIService {
         dashboardName: reportName,
         description: `Auto-generated dashboard for ${fileName}`,
         dataRowCount: totalRows,
-        sheetCount: excelAnalysis.sheets.length
+        sheetCount: 1
       };
 
       const dashboardId = await DashboardService.createDashboard(dashboardRequest);
@@ -125,85 +126,84 @@ export class ExcelToPowerBIService {
       const arrayBuffer = await response.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
-      // Process each sheet
-      for (const sheet of excelAnalysis.sheets) {
-        console.log(`📋 Processing sheet: ${sheet.name}`);
-        
-        const worksheet = workbook.Sheets[sheet.name];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        if (jsonData.length <= 1) {
-          console.log(`⚠️ Skipping empty sheet: ${sheet.name}`);
-          continue;
-        }
+      // Process the main sheet (using the first sheet in the workbook)
+      const sheetName = workbook.SheetNames[0];
+      console.log(`📋 Processing sheet: ${sheetName}`);
+      
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length <= 1) {
+        console.log(`⚠️ Skipping empty sheet: ${sheetName}`);
+        return;
+      }
 
-        const headers = jsonData[0] as string[];
-        const dataRows = jsonData.slice(1);
+      const headers = jsonData[0] as string[];
+      const dataRows = jsonData.slice(1);
 
-        // Convert data to PowerBI format
-        const powerBIRows = dataRows.map(row => {
-          const obj: any = {};
-          headers.forEach((header, index) => {
-            let value = (row as any[])[index];
-            
-            // Handle data type conversion for PowerBI
-            if (value !== null && value !== undefined && value !== '') {
-              // Find column type from analysis
-              const columnInfo = sheet.columns.find(col => col.name === header);
-              if (columnInfo) {
-                switch (columnInfo.type) {
-                  case 'number':
-                    value = typeof value === 'number' ? value : parseFloat(value) || 0;
-                    break;
-                  case 'date':
-                    if (typeof value === 'number') {
-                      // Excel date serial number
-                      const excelEpoch = new Date(1900, 0, 1);
-                      const date = new Date(excelEpoch.getTime() + (value - 2) * 24 * 60 * 60 * 1000);
-                      value = date.toISOString();
-                    } else if (typeof value === 'string') {
-                      const parsedDate = new Date(value);
-                      value = isNaN(parsedDate.getTime()) ? value : parsedDate.toISOString();
-                    }
-                    break;
-                  case 'boolean':
-                    value = Boolean(value);
-                    break;
-                  default:
-                    value = String(value);
-                }
-              } else {
-                value = String(value);
+      // Convert data to PowerBI format
+      const powerBIRows = dataRows.map(row => {
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          let value = (row as any[])[index];
+          
+          // Handle data type conversion for PowerBI
+          if (value !== null && value !== undefined && value !== '') {
+            // Find column type from analysis
+            const columnType = excelAnalysis.dataTypes[header];
+            if (columnType) {
+              switch (columnType) {
+                case 'number':
+                  value = typeof value === 'number' ? value : parseFloat(value) || 0;
+                  break;
+                case 'date':
+                  if (typeof value === 'number') {
+                    // Excel date serial number
+                    const excelEpoch = new Date(1900, 0, 1);
+                    const date = new Date(excelEpoch.getTime() + (value - 2) * 24 * 60 * 60 * 1000);
+                    value = date.toISOString();
+                  } else if (typeof value === 'string') {
+                    const parsedDate = new Date(value);
+                    value = isNaN(parsedDate.getTime()) ? value : parsedDate.toISOString();
+                  }
+                  break;
+                case 'boolean':
+                  value = Boolean(value);
+                  break;
+                default:
+                  value = String(value);
               }
             } else {
-              value = null;
+              value = String(value);
             }
-            
-            obj[header] = value;
-          });
-          return obj;
+          } else {
+            value = null;
+          }
+          
+          obj[header] = value;
         });
+        return obj;
+      });
 
-        // Filter out rows with all null/empty values
-        const validRows = powerBIRows.filter(row => 
-          Object.values(row).some(val => val !== null && val !== undefined && val !== '')
-        );
+      // Filter out rows with all null/empty values
+      const validRows = powerBIRows.filter(row => 
+        Object.values(row).some(val => val !== null && val !== undefined && val !== '')
+      );
 
-        console.log(`📊 Uploading ${validRows.length} rows to table: ${sheet.name}`);
+      console.log(`📊 Uploading ${validRows.length} rows to table: ${sheetName}`);
 
-        // Upload data to PowerBI
-        const uploadResult = await PowerBIService.uploadDataToTable(
-          datasetId,
-          sheet.name,
-          validRows
-        );
+      // Upload data to PowerBI
+      const uploadResult = await PowerBIService.uploadDataToTable(
+        datasetId,
+        sheetName,
+        validRows
+      );
 
-        if (!uploadResult.success) {
-          throw new Error(`Failed to upload data for sheet ${sheet.name}: ${uploadResult.error}`);
-        }
-
-        console.log(`✅ Sheet ${sheet.name} data uploaded successfully`);
+      if (!uploadResult.success) {
+        throw new Error(`Failed to upload data for sheet ${sheetName}: ${uploadResult.error}`);
       }
+
+      console.log(`✅ Sheet ${sheetName} data uploaded successfully`);
 
     } catch (error: any) {
       console.error('❌ Error uploading Excel data to PowerBI:', error);

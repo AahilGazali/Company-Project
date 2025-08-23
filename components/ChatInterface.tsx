@@ -22,9 +22,14 @@ import ChatActionButtons from "./ChatActionButtons"
 import type { ChatMessage } from "../services/geminiService"
 import GeminiService from "../services/geminiService"
 import { type ExcelAnalysis, ExcelAnalysisService } from "../services/excelAnalysisService"
+import { SearchIndexService } from "../services/searchIndexService"
+import { FirebaseDataService } from "../services/firebaseDataService"
+import ImportedFilesService from "../services/importedFilesService"
+import { getUserID } from "../utils/userUtils"
 import { spacing, fontSize, borderRadius, getSafeAreaPadding, getIconSize, screenDimensions } from "../utils/responsive"
 import TypingIndicator from "./TypingIndicator"
 import { useTheme } from "../contexts/ThemeContext"
+import { useUser } from "../contexts/UserContext"
 
 
 const { height: screenHeight } = screenDimensions
@@ -37,6 +42,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ isVisible, onClose, dataAnalysis }: ChatInterfaceProps) {
   const { isUserDarkMode } = useTheme()
+  const { user, isAdminCreatedUser } = useUser()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -44,6 +50,8 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
   const [inputMessage, setInputMessage] = useState("")
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [showActionButtons, setShowActionButtons] = useState(false)
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
   const slideAnim = useRef(new Animated.Value(0)).current
   const welcomeMessageAdded = useRef(false)
@@ -192,6 +200,16 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
       justifyContent: 'center',
       alignItems: 'center',
     },
+    suggestionsTitle: {
+      color: isUserDarkMode ? '#FFFFFF' : '#333333',
+    },
+    suggestionButton: {
+      backgroundColor: isUserDarkMode ? '#374151' : '#F8F9FA',
+      borderColor: isUserDarkMode ? '#4B5563' : '#E0E0E0',
+    },
+    suggestionText: {
+      color: isUserDarkMode ? '#FFFFFF' : '#333333',
+    },
   }
 
   useEffect(() => {
@@ -284,7 +302,7 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     setIsTyping(true)
 
     try {
-      let response: any // Changed from ChatResponse to any as ChatResponse is no longer imported
+      let response: any
 
       // Handle debug query command
       if (message.toLowerCase().includes("debug query:")) {
@@ -343,27 +361,15 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
         return
       }
 
-      // Handle save data command
-      if (message.toLowerCase().includes("save complete data")) {
-        console.log("💾 Save complete data requested...")
-
-        if (dataAnalysis?.fullData) {
-          try {
-            const saveSuccess = GeminiService.saveCompleteData(dataAnalysis)
-
-            if (saveSuccess) {
-              addMessage(
-                '✅ **Complete Data Saved Successfully!**\n\n📊 **All Excel data is now stored and ready for instant querying**\n\n🔍 **Try asking:**\n• "How many MMTs were received for 1172 ELEVENTH STREET (GUEST HOUSE) in June 2025?"\n• "Show me all records for 6/27/2025"\n• "Which locations had AC issues?"\n\n⚡ **Responses will be instant and professional, just like ChatGPT!**',
-                false,
-              )
-            } else {
-              addMessage("❌ **Failed to save complete data.** Please try re-uploading your Excel file.", false)
-            }
-          } catch (error) {
-            addMessage(`❌ Save failed: ${error}`, false)
-          }
-        } else {
-          addMessage("❌ No data available to save. Please upload your Excel file first.", false)
+      // Handle location debugging
+      if (message.toLowerCase().includes("show all locations") || message.toLowerCase().includes("debug locations")) {
+        console.log("📍 Debugging available locations...")
+        
+        try {
+          const locationDebug = await FirebaseDataService.debugAvailableLocations()
+          addMessage(locationDebug, false)
+        } catch (error) {
+          addMessage(`❌ Location debug failed: ${error}`, false)
         }
 
         setIsLoading(false)
@@ -371,57 +377,15 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
         return
       }
 
-      // Handle debug data command
-      if (message.toLowerCase().includes("debug data structure")) {
-        console.log("🔧 Debug data structure requested...")
-
-        if (dataAnalysis?.fullData) {
-          try {
-            // First save the data to see the structure
-            const saveSuccess = GeminiService.saveCompleteData(dataAnalysis)
-
-            if (saveSuccess) {
-              // Get the saved data structure
-              const savedData = ExcelAnalysisService.getCompleteData()
-
-              if (savedData) {
-                const { metadata, records } = savedData
-                let debugMessage = `🔧 **DATA STRUCTURE DEBUG**\n\n`
-
-                debugMessage += `📁 **File:** ${metadata.fileName}\n`
-                debugMessage += `📊 **Total Records:** ${metadata.totalRecords}\n`
-                debugMessage += `📋 **Available Columns:** ${metadata.availableColumns.join(", ")}\n\n`
-
-                debugMessage += `🔍 **Field Mapping:**\n`
-                Object.entries(metadata.fieldMapping).forEach(([standardField, actualField]) => {
-                  debugMessage += `- ${standardField} → ${actualField}\n`
-                })
-
-                debugMessage += `\n✅ **Data Integrity:**\n`
-                Object.entries(metadata.dataIntegrity).forEach(([field, hasField]) => {
-                  debugMessage += `- ${field}: ${hasField ? "✅" : "❌"}\n`
-                })
-
-                if (records && records.length > 0) {
-                  debugMessage += `\n📋 **Sample Record Fields:**\n`
-                  const sampleRecord = records[0]
-                  Object.entries(sampleRecord).forEach(([field, value]) => {
-                    debugMessage += `- ${field}: ${value}\n`
-                  })
-                }
-
-                addMessage(debugMessage, false)
-              } else {
-                addMessage("❌ No saved data structure found. Please try saving data first.", false)
-              }
-            } else {
-              addMessage("❌ Failed to save data for debugging. Please try re-uploading your Excel file.", false)
-            }
-          } catch (error) {
-            addMessage(`❌ Debug failed: ${error}`, false)
-          }
-        } else {
-          addMessage("❌ No data available for debugging. Please upload your Excel file first.", false)
+      // Handle Firebase record count debugging
+      if (message.toLowerCase().includes("debug firebase count") || message.toLowerCase().includes("count firebase records")) {
+        console.log("📊 Debugging Firebase record count...")
+        
+        try {
+          const countDebug = await FirebaseDataService.debugRecordCount()
+          addMessage(countDebug, false)
+        } catch (error) {
+          addMessage(`❌ Firebase count debug failed: ${error}`, false)
         }
 
         setIsLoading(false)
@@ -429,65 +393,301 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
         return
       }
 
-      // Check if this is a data-related query
-      const dataKeywords = [
-        "ac",
-        "action",
-        "location",
-        "maintenance",
-        "issue",
-        "problem",
-        "failure",
-        "mmt",
-        "date",
-        "equipment",
-        "show",
-        "give",
-        "all",
-        "data",
-        "records",
-        "list",
-        "find",
-        "search",
-        "filter",
-        "where",
-        "when",
-        "how many",
-        "hvac",
-        "electrical",
-        "plumbing",
-        "repair",
-        "inspection",
-        "installation",
-        "cleaning",
-        "replacement",
-        "27",
-        "6/27",
-        "june 27",
-        "june 27th",
-        "eleventh street",
-        "june 2025",
-      ]
-      const isDataQuery = dataKeywords.some((keyword) => message.toLowerCase().includes(keyword))
+      // Handle Firebase test query
+      if (message.toLowerCase().includes("test firebase query")) {
+        console.log("🧪 Testing Firebase query system...")
+        
+        try {
+          addMessage("🔍 Testing Firebase query: 'show all records'", false)
+          const testResult = await FirebaseDataService.processNaturalLanguageQuery("show all records")
+          
+          if (testResult.success) {
+            const response = testResult.naturalResponse || testResult.error || 'No response generated'
+            addMessage(`✅ Firebase query test successful:\n\n${response}`, false)
+          } else {
+            addMessage(`❌ Firebase query test failed: ${testResult.error}`, false)
+          }
+        } catch (error) {
+          addMessage(`❌ Firebase query test error: ${error}`, false)
+        }
 
-      if (isDataQuery) {
-        // Check if complete data is available
-        if (!dataAnalysis?.fullData || dataAnalysis.fullData.length === 0) {
-          addMessage(
-            "❌ **Full dataset not available!** Your Excel file was only partially analyzed.\n\n🔄 **Please re-upload your Excel file** to ensure complete data loading.",
-            false,
-          )
+        setIsLoading(false)
+        setIsTyping(false)
+        return
+      }
+
+      // Handle Firebase status check
+      if (message.toLowerCase().includes("check firebase status") || message.toLowerCase().includes("firebase status")) {
+        console.log("📊 Checking Firebase collection status...")
+        
+        try {
+          const statusResult = await FirebaseDataService.checkCollectionStatus()
+          addMessage(statusResult, false)
+        } catch (error) {
+          addMessage(`❌ Firebase status check failed: ${error}`, false)
+        }
+
+        setIsLoading(false)
+        setIsTyping(false)
+        return
+      }
+
+      // Handle detailed Firebase upload verification
+      if (message.toLowerCase().includes("verify firebase upload") || message.toLowerCase().includes("check upload")) {
+        console.log("🔍 Verifying Firebase upload details...")
+        
+        try {
+          addMessage("🔍 **Firebase Upload Verification**\n\nChecking upload process...", false)
+          
+          // Check if we have current collection info
+          const collectionInfo = FirebaseDataService.getCurrentCollection()
+          addMessage(`📂 **Collection Info:**\n• Collection: ${collectionInfo.collectionName || 'None'}\n• File: ${collectionInfo.fileName || 'None'}`, false)
+          
+          // Check collection status
+          const statusResult = await FirebaseDataService.checkCollectionStatus()
+          addMessage(`📊 **Collection Status:**\n${statusResult}`, false)
+          
+          // Test a simple query
+          addMessage("🧪 **Testing Query System:**\nTesting 'show all records' query...", false)
+          const testResult = await FirebaseDataService.processNaturalLanguageQuery("show all records")
+          
+          if (testResult.success) {
+            const response = testResult.naturalResponse || testResult.error || 'No response generated'
+            addMessage(`✅ **Query Test Successful:**\n\n${response}`, false)
+          } else {
+            addMessage(`❌ **Query Test Failed:**\n${testResult.error}`, false)
+          }
+          
+        } catch (error) {
+          addMessage(`❌ Verification failed: ${error}`, false)
+        }
+
+        setIsLoading(false)
+        setIsTyping(false)
+        return
+      }
+
+             // Handle MMT number test
+       if (message.toLowerCase().includes("test mmt") || message.toLowerCase().includes("debug mmt")) {
+         console.log("🔢 Testing MMT number query...")
+         
+         try {
+           addMessage("🔢 **Testing MMT Number Query**\n\nTesting MMT number 4006209606...", false)
+           
+           const testResult = await FirebaseDataService.processNaturalLanguageQuery("give me the location of 4006209606")
+           
+           if (testResult.success) {
+             const response = testResult.naturalResponse || testResult.error || 'No response generated'
+             addMessage(`✅ **MMT Query Test Successful:**\n\n${response}`, false)
+           } else {
+             addMessage(`❌ **MMT Query Test Failed:**\n${testResult.error}`, false)
+           }
+           
+         } catch (error) {
+           addMessage(`❌ MMT test failed: ${error}`, false)
+         }
+
+         setIsLoading(false)
+         setIsTyping(false)
+         return
+       }
+
+       // Handle direct MMT search
+       if (message.toLowerCase().includes("direct search") || message.toLowerCase().includes("search mmt")) {
+         console.log("🔍 Direct MMT search requested...")
+         
+         // Extract MMT number from message
+         const mmtMatch = message.match(/(\d{10,12})/);
+         if (mmtMatch) {
+           const mmtNumber = mmtMatch[1];
+           addMessage(`🔍 **Direct Search** for MMT: ${mmtNumber}`, false)
+           
+           try {
+             const directResult = await FirebaseDataService.directMmtSearch(mmtNumber)
+             addMessage(directResult, false)
+           } catch (error) {
+             addMessage(`❌ Direct search failed: ${error}`, false)
+           }
+         } else {
+           addMessage("❌ Please include an MMT number in your message (e.g., 'Direct search 4006209606')", false)
+         }
+
+         setIsLoading(false)
+         setIsTyping(false)
+         return
+       }
+
+       // Handle manual collection setup
+       if (message.toLowerCase().includes("setup collection") || message.toLowerCase().includes("load collection")) {
+         console.log("🔧 Setting up collection manually...")
+         
+         try {
+           addMessage("🔧 **Setting up Firebase Collection**\n\nTrying to connect to MMT_Database_Compressed_xlsx...", false)
+           
+           // Force set the collection
+           await FirebaseDataService.setCurrentCollection('MMT_Database_Compressed_xlsx', 'MMT_Database_Compressed.xlsx')
+           
+           const statusResult = await FirebaseDataService.checkCollectionStatus()
+           addMessage(`✅ **Collection Setup Complete:**\n${statusResult}`, false)
+           
+         } catch (error) {
+           addMessage(`❌ Collection setup failed: ${error}`, false)
+         }
+
+         setIsLoading(false)
+         setIsTyping(false)
+         return
+       }
+
+       // Handle specific MMT number queries - force Firebase
+       const mmtNumberMatch = message.match(/(\d{10,12})/);
+       if (mmtNumberMatch) {
+         console.log(`🔢 MMT number detected (${mmtNumberMatch[1].length} digits), forcing Firebase query...`)
+         
+         try {
+           const firebaseResult = await FirebaseDataService.processNaturalLanguageQuery(message)
+           
+           if (firebaseResult.success) {
+             const response = firebaseResult.naturalResponse || firebaseResult.error || 'No response generated'
+             addMessage(response, false)
+           } else {
+             addMessage(`❌ **MMT Query Failed**: ${firebaseResult.error}`, false)
+           }
+         } catch (error) {
+           addMessage(`❌ **MMT Query Error**: ${error}`, false)
+         }
+
+         setIsLoading(false)
+         setIsTyping(false)
+         return
+       }
+
+      // Handle force re-upload to Firebase
+      if (message.toLowerCase().includes("force firebase upload") || message.toLowerCase().includes("re-upload to firebase")) {
+        console.log("🔄 Force re-uploading data to Firebase...")
+        
+        if (!dataAnalysis?.fileName || !dataAnalysis?.fullData) {
+          addMessage("❌ No Excel data available. Please upload an Excel file first.", false)
           setIsLoading(false)
           setIsTyping(false)
           return
         }
 
-        console.log("🔍 Executing hybrid AI + code query...")
-        response = await GeminiService.answerDataQuestion(message)
-      } else {
-        console.log("💬 Executing general query...")
-        response = await GeminiService.sendMessage(message)
+        try {
+          // Get the file URL from imported files
+          const userId = getUserID(user, isAdminCreatedUser)
+          if (!userId) {
+            addMessage("❌ User authentication required for re-upload.", false)
+            setIsLoading(false)
+            setIsTyping(false)
+            return
+          }
+
+          const files = await ImportedFilesService.getUserImportedFiles(userId)
+          const currentFile = files.find(f => f.originalName === dataAnalysis.fileName)
+          
+          if (!currentFile) {
+            addMessage("❌ Original file not found in storage.", false)
+            setIsLoading(false)
+            setIsTyping(false)
+            return
+          }
+
+          addMessage(`🔄 Re-uploading ${dataAnalysis.fileName} with ${dataAnalysis.fullData.length} records to Firebase...`, false)
+          
+          const firebaseResult = await FirebaseDataService.uploadExcelToFirebase(currentFile.fileUrl, currentFile.originalName)
+          
+          if (firebaseResult.success) {
+            addMessage(`✅ ${firebaseResult.message}`, false)
+          } else {
+            addMessage(`❌ Re-upload failed: ${firebaseResult.message}`, false)
+          }
+        } catch (error) {
+          addMessage(`❌ Re-upload error: ${error}`, false)
+        }
+
+        setIsLoading(false)
+        setIsTyping(false)
+        return
       }
+
+             // Check if this is a data-related query - prioritize Firebase for all data queries
+       const dataKeywords = [
+         "ac",
+         "action",
+         "location",
+         "maintenance",
+         "issue",
+         "problem",
+         "failure",
+         "mmt",
+         "date",
+         "equipment",
+         "show",
+         "give",
+         "all",
+         "data",
+         "records",
+         "list",
+         "find",
+         "search",
+         "filter",
+         "where",
+         "when",
+         "how many",
+         "hvac",
+         "electrical",
+         "plumbing",
+         "repair",
+         "inspection",
+         "installation",
+         "cleaning",
+         "replacement",
+         "27",
+         "6/27",
+         "june 27",
+         "june 27th",
+         "eleventh street",
+         "june 2025",
+         "4006249504", // Add specific MMT number
+         "40062209606", // Add the new MMT number
+         "tenth street",
+         "salamiyah",
+         "avenue",
+         "street",
+       ]
+       const isDataQuery = dataKeywords.some((keyword) => message.toLowerCase().includes(keyword))
+
+       if (isDataQuery) {
+         // ALWAYS try Firebase first for data queries
+         console.log("🔍 Processing Firebase natural language query...")
+         try {
+           const firebaseResult = await FirebaseDataService.processNaturalLanguageQuery(message)
+           
+           if (firebaseResult.success) {
+             const response = firebaseResult.naturalResponse || firebaseResult.error || 'No response generated'
+             addMessage(response, false)
+             setIsLoading(false)
+             setIsTyping(false)
+             return
+           } else {
+             console.log("❌ Firebase query failed:", firebaseResult.error)
+             addMessage(`❌ **Firebase Query Failed**: ${firebaseResult.error}`, false)
+             setIsLoading(false)
+             setIsTyping(false)
+             return
+           }
+         } catch (firebaseError) {
+           console.error("❌ Firebase query error:", firebaseError)
+           addMessage(`❌ **Firebase Error**: ${firebaseError}`, false)
+           setIsLoading(false)
+           setIsTyping(false)
+           return
+         }
+       } else {
+         console.log("💬 Executing general query...")
+         response = await GeminiService.sendMessage(message)
+       }
 
       if (response.success && response.message) {
         addMessage(response.message, false)
@@ -506,12 +706,29 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
     }
   }
 
+  const loadSearchSuggestions = () => {
+    if (dataAnalysis?.fullData && dataAnalysis.fullData.length > 0) {
+      try {
+        const suggestions = SearchIndexService.getSearchSuggestions();
+        setSearchSuggestions(suggestions);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Failed to load search suggestions:', error);
+      }
+    }
+  }
+
   const welcomeMessage = () => {
     if (messages.length === 0) {
       addMessage(
         "🤖 Hello! I'm your AI Business Analyst Assistant. I can help you analyze data, answer questions, and provide insights. How can I assist you today?",
         false,
       )
+      
+      // Load search suggestions if data is available
+      setTimeout(() => {
+        loadSearchSuggestions();
+      }, 1000);
     }
   }
 
@@ -598,6 +815,31 @@ export default function ChatInterface({ isVisible, onClose, dataAnalysis }: Chat
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
+              
+              {/* Search Suggestions */}
+              {showSuggestions && searchSuggestions.length > 0 && messages.length === 1 && (
+                <View style={styles.suggestionsContainer}>
+                  <Text style={[styles.suggestionsTitle, dynamicStyles.suggestionsTitle]}>
+                    💡 Try asking about your data:
+                  </Text>
+                  <View style={styles.suggestionsList}>
+                    {searchSuggestions.slice(0, 5).map((suggestion, index) => (
+                      <Pressable
+                        key={index}
+                        style={[styles.suggestionButton, dynamicStyles.suggestionButton]}
+                        onPress={() => {
+                          handleSendMessage(suggestion);
+                          setShowSuggestions(false);
+                        }}
+                      >
+                        <Text style={[styles.suggestionText, dynamicStyles.suggestionText]}>
+                          {suggestion}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
               
               {/* Action Buttons */}
               {showActionButtons && hasDataContext && (
@@ -827,6 +1069,33 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     marginHorizontal: spacing.large,
     marginVertical: spacing.medium,
+  },
+  suggestionsContainer: {
+    marginHorizontal: spacing.large,
+    marginVertical: spacing.medium,
+    padding: spacing.medium,
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    borderRadius: borderRadius.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.3)',
+  },
+  suggestionsTitle: {
+    fontSize: fontSize.medium,
+    fontWeight: '600',
+    marginBottom: spacing.small,
+  },
+  suggestionsList: {
+    gap: spacing.small,
+  },
+  suggestionButton: {
+    padding: spacing.small,
+    borderRadius: borderRadius.small,
+    borderWidth: 1,
+    borderStyle: 'solid',
+  },
+  suggestionText: {
+    fontSize: fontSize.small,
+    textAlign: 'left',
   },
   floatingCloseButton: {
     position: 'absolute' as const,
